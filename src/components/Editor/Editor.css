@@ -12,7 +12,7 @@
 	width: 100%;
 	max-width: 800px;
 	min-height: 1100px;
-	height: auto;
+	height: fit-content;
 	background-color: var(--surface);
 	box-shadow: var(--shadow);
 	padding: 60px;
