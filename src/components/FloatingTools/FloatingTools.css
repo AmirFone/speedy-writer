@@ -1,0 +1,142 @@
+.floating-tools {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	z-index: 50;
+	background-color: var(--surface);
+	padding: 8px;
+	border-radius: var(--radius-md);
+	box-shadow: var(--shadow);
+	border: 1px solid var(--border);
+	transition: all 0.3s ease;
+      }
+      
+      .floating-tools.collapsed {
+	width: 48px;
+	height: 48px;
+	overflow: hidden;
+	padding: 0;
+	border-radius: 24px;
+      }
+      
+      .floating-tool {
+	width: 40px;
+	height: 40px;
+	border-radius: 20px;
+	background-color: var(--surface);
+	color: var(--primary);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	border: 1px solid var(--border);
+	position: relative;
+      }
+      
+      .floating-tool:hover {
+	transform: scale(1.05);
+	background-color: var(--primary);
+	color: white;
+      }
+      
+      .floating-tool.recording {
+	background-color: var(--error);
+	color: white;
+	animation: pulse 1.5s infinite;
+      }
+      
+      @keyframes pulse {
+	0% { transform: scale(1); }
+	50% { transform: scale(1.05); }
+	100% { transform: scale(1); }
+      }
+      
+      .floating-tool i {
+	font-size: 18px;
+      }
+      
+      .floating-tool .shortcut-tooltip {
+	position: absolute;
+	left: -120px;
+	top: 50%;
+	transform: translateY(-50%);
+	background-color: var(--text);
+	color: white;
+	padding: 6px 10px;
+	border-radius: var(--radius-sm);
+	font-size: 12px;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.2s ease;
+	z-index: 100;
+	box-shadow: var(--shadow);
+      }
+      
+      .floating-tool:hover .shortcut-tooltip {
+	opacity: 1;
+	visibility: visible;
+	left: -140px;
+      }
+      
+      .floating-tools-handle {
+	width: 40px;
+	height: 20px;
+	background-color: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: grab;
+	color: var(--text-secondary);
+	font-size: 12px;
+	user-select: none;
+	margin-bottom: 4px;
+      }
+      
+      .floating-tools-handle:active {
+	cursor: grabbing;
+      }
+      
+      .floating-tools-toggle {
+	width: 40px;
+	height: 40px;
+	border-radius: 20px;
+	background-color: var(--primary);
+	color: white;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	z-index: 5;
+      }
+      
+      .floating-tools-toggle i {
+	font-size: 18px;
+	transition: transform 0.3s ease;
+      }
+      
+      .floating-tools.collapsed .floating-tools-toggle {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+      }
+      
+      .floating-tools:not(.collapsed) .floating-tools-inner {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+      }
+      
+      .floating-tools.collapsed .floating-tools-inner {
+	opacity: 0;
+	visibility: hidden;
+	height: 0;
+      }

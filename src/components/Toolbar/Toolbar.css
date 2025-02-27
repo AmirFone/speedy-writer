@@ -1,0 +1,119 @@
+.toolbar {
+	position: fixed;
+	top: 70px;
+	left: 50%;
+	transform: translateX(-50%);
+	background-color: var(--surface);
+	border-radius: var(--radius-lg);
+	box-shadow: var(--shadow-lg);
+	padding: 6px;
+	display: flex;
+	gap: 2px;
+	z-index: 20;
+	transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+      
+      .toolbar-group {
+	display: flex;
+	gap: 2px;
+	border-right: 1px solid var(--border);
+	padding-right: 6px;
+	margin-right: 4px;
+      }
+      
+      .toolbar-group:last-child {
+	border-right: none;
+	padding-right: 0;
+	margin-right: 0;
+      }
+      
+      .tool-btn {
+	background: transparent;
+	border: none;
+	width: 34px;
+	height: 34px;
+	border-radius: var(--radius);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	color: var(--text);
+	font-size: 14px;
+	transition: all var(--transition);
+	position: relative;
+      }
+      
+      .tool-btn:hover {
+	background-color: var(--surface-hover);
+      }
+      
+      .tool-btn.active {
+	background-color: var(--primary);
+	color: white;
+      }
+      
+      .tool-btn .shortcut-tooltip {
+	position: absolute;
+	bottom: -36px;
+	left: 50%;
+	transform: translateX(-50%) translateY(4px);
+	background-color: var(--text);
+	color: white;
+	padding: 4px 8px;
+	border-radius: var(--radius-sm);
+	font-size: 12px;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.2s ease;
+	z-index: 100;
+	box-shadow: var(--shadow);
+      }
+      
+      .tool-btn:hover .shortcut-tooltip {
+	opacity: 1;
+	transform: translateX(-50%) translateY(0);
+	visibility: visible;
+      }
+      
+      .shortcut-tooltip::after {
+	content: '';
+	position: absolute;
+	top: -4px;
+	left: 50%;
+	transform: translateX(-50%) rotate(45deg);
+	width: 8px;
+	height: 8px;
+	background-color: var(--text);
+      }
+      
+      .kbd {
+	display: inline-block;
+	background-color: rgba(255, 255, 255, 0.2);
+	border-radius: 3px;
+	padding: 1px 4px;
+	margin: 0 2px;
+	font-family: monospace;
+	font-size: 11px;
+      }
+
+      /* Fix for dropdown that appears when hovering */
+.tool-btn::after {
+  color: inherit;
+}
+
+/* Fix for Bold dropdown in dark mode */
+body.dark-mode .tool-btn[data-command="bold"]::after,
+body.dark-mode .tool-btn[data-command="italic"]::after,
+body.dark-mode .tool-btn[data-command="underline"]::after,
+body.dark-mode .tool-btn[data-command="strikeThrough"]::after {
+  color: var(--text) !important;
+}
+
+/* Target that specific white box in the screenshot */
+body.dark-mode .toolbar .dropdown,
+body.dark-mode .tool-btn .dropdown {
+  background-color: var(--surface) !important;
+  color: var(--text) !important;
+}

@@ -1,0 +1,176 @@
+.modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+	opacity: 0;
+	pointer-events: none;
+	transition: all 0.3s ease;
+      }
+      
+      .modal.active {
+	opacity: 1;
+	pointer-events: auto;
+      }
+      
+      .modal-content {
+	background-color: var(--surface);
+	border-radius: var(--radius-lg);
+	padding: 24px;
+	width: 90%;
+	max-width: 500px;
+	box-shadow: var(--shadow-lg);
+	transform: translateY(-20px);
+	transition: transform 0.3s ease;
+	max-height: 90vh;
+	overflow-y: auto;
+      }
+      
+      .modal.active .modal-content {
+	transform: translateY(0);
+      }
+      
+      .modal-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 20px;
+      }
+      
+      .modal-title {
+	font-weight: 600;
+	font-size: 18px;
+	color: var(--text);
+      }
+      
+      .close-modal {
+	background: none;
+	border: none;
+	color: var(--text-secondary);
+	font-size: 20px;
+	cursor: pointer;
+	transition: color 0.2s ease;
+      }
+      
+      .close-modal:hover {
+	color: var(--text);
+      }
+      
+      .modal-body {
+	margin-bottom: 20px;
+      }
+      
+      .modal-body label {
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 500;
+	font-size: 14px;
+	color: var(--text);
+      }
+      
+      .modal-body input,
+      .modal-body textarea {
+	width: 100%;
+	padding: 12px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	font-size: 14px;
+	outline: none;
+	transition: border-color 0.2s ease;
+      }
+      
+      .modal-body input:focus,
+      .modal-body textarea:focus {
+	border-color: var(--primary);
+      }
+      
+      .modal-body textarea {
+	resize: vertical;
+	min-height: 100px;
+      }
+      
+      .modal-body p {
+	margin-bottom: 16px;
+	font-size: 14px;
+	line-height: 1.6;
+      }
+      
+      .selected-text-preview {
+	background-color: var(--background);
+	padding: 12px;
+	border-radius: var(--radius);
+	margin-bottom: 16px;
+	font-size: 14px;
+	color: var(--text-secondary);
+	max-height: 100px;
+	overflow-y: auto;
+      }
+      
+      .modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+      }
+      
+      .diff-container {
+	margin-top: 20px;
+	padding: 16px;
+	background-color: var(--background);
+	border-radius: var(--radius);
+	max-height: 300px;
+	overflow-y: auto;
+      }
+      
+      .diff-title {
+	font-weight: 500;
+	font-size: 14px;
+	margin-bottom: 8px;
+      }
+      
+      .diff-original {
+	background-color: rgba(239, 68, 68, 0.1);
+	padding: 8px;
+	border-radius: var(--radius-sm);
+	margin-bottom: 8px;
+	position: relative;
+      }
+      
+      .diff-suggested {
+	background-color: rgba(16, 185, 129, 0.1);
+	padding: 8px;
+	border-radius: var(--radius-sm);
+	position: relative;
+      }
+      
+      .diff-label {
+	position: absolute;
+	top: 4px;
+	right: 8px;
+	font-size: 10px;
+	color: var(--text-secondary);
+	background-color: rgba(255, 255, 255, 0.8);
+	padding: 2px 6px;
+	border-radius: 10px;
+      }
+      
+      /* Spinner animation */
+      .spinner {
+	display: inline-block;
+	width: 16px;
+	height: 16px;
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	border-radius: 50%;
+	border-top-color: white;
+	animation: spin 1s ease-in-out infinite;
+	margin-right: 8px;
+      }
+      
+      @keyframes spin {
+	to { transform: rotate(360deg); }
+      }

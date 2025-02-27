@@ -1,0 +1,40 @@
+.editor-container {
+	height: 100%;
+	width: 100%;
+	overflow: auto;
+	display: flex;
+	justify-content: center;
+	padding: 60px 0;
+	position: relative;
+      }
+      
+.paper {
+	width: 100%;
+	max-width: 800px;
+	min-height: 1100px;
+	height: auto;
+	background-color: var(--surface);
+	box-shadow: var(--shadow);
+	padding: 60px;
+	outline: none;
+	font-size: 16px;
+	line-height: 1.8;
+	color: var(--text);
+	border-radius: var(--radius-md);
+	margin: 0 auto;
+	position: relative;
+	transition: min-height 0.3s ease;
+      }
+      
+      .paper:focus {
+	box-shadow: var(--shadow-lg);
+      }
+      
+      .paper p {
+	margin-bottom: 16px;
+      }
+      
+      .paper h1, .paper h2, .paper h3 {
+	margin-top: 24px;
+	margin-bottom: 16px;
+      }
