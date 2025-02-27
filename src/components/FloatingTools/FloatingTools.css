@@ -140,3 +140,13 @@
 	visibility: hidden;
 	height: 0;
       }
+      
+      /* ---- Dark Mode Tooltip Fix ---- */
+      body.dark-mode .floating-tool .shortcut-tooltip {
+	background-color: #374151; /* Darker gray */
+	color: #f3f4f6;           /* Lighter text color */
+      }
+      
+      body.dark-mode .floating-tool .shortcut-tooltip::after {
+	background-color: #374151;
+      }

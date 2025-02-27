@@ -46,17 +46,22 @@ const FORMATTING_OPTIONS = [
 ];
 
 function Toolbar() {
-  const { execCommand } = useEditor();
-  
-  const handleButtonClick = (command, value) => {
-    if (command === 'createLink') {
-      const url = prompt('Enter link URL:');
-      if (url) execCommand(command, url);
-    } else {
-      execCommand(command, value);
-    }
+  const { execCommand, focusEditor } = useEditor();
+
+  const handleButtonMouseDown = (e, command, value) => {
+    e.preventDefault();
+    e.stopPropagation();
+    focusEditor();
+    setTimeout(() => {
+      if (command === 'createLink') {
+        const url = prompt('Enter link URL:');
+        if (url) execCommand(command, url);
+      } else {
+        execCommand(command, value);
+      }
+    }, 0);
   };
-  
+
   return (
     <div className="toolbar">
       {FORMATTING_OPTIONS.map((group, groupIndex) => (
@@ -66,7 +71,7 @@ function Toolbar() {
               key={buttonIndex}
               className="tool-btn"
               title={button.title}
-              onClick={() => handleButtonClick(button.command, button.value)}
+              onMouseDown={(e) => handleButtonMouseDown(e, button.command, button.value)}
               data-command={button.command}
               data-value={button.value}
             >

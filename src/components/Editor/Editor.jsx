@@ -11,61 +11,22 @@ function Editor() {
   const { comments } = useComments();
   const { content, setContent, updateCounts } = useAppContext();
   const containerRef = useRef(null);
-  
-  // Focus editor on mount
+
+  // Focus editor on mount (only once)
   useEffect(() => {
     focusEditor();
   }, [focusEditor]);
-  
-  // Monitor editor for growth needs
+
+  // Initialize the editor’s HTML once on mount if empty
   useEffect(() => {
-    if (!editorRef.current) return;
-    
-    // Check if we need to expand the editor
-    const checkEditorHeight = () => {
-      if (editorRef.current) {
-        const scrollHeight = editorRef.current.scrollHeight;
-        const clientHeight = editorRef.current.clientHeight;
-        
-        if (scrollHeight > clientHeight) {
-          editorRef.current.style.minHeight = `${scrollHeight + 200}px`;
-        }
-      }
-    };
-    
-    // Set up a mutation observer to watch for content changes
-    const observer = new MutationObserver(checkEditorHeight);
-    observer.observe(editorRef.current, { 
-      childList: true,
-      subtree: true,
-      characterData: true,
-      attributes: true 
-    });
-    
-    // Also check on key/input events
-    const handleEvents = () => {
-      checkEditorHeight();
-      if (editorRef.current) {
-        setContent(editorRef.current.innerHTML);
-        updateCounts(editorRef.current.innerText || '');
-      }
-    };
-    
-    editorRef.current.addEventListener('input', handleEvents);
-    editorRef.current.addEventListener('keyup', handleEvents);
-    
-    // Initial check
-    checkEditorHeight();
-    
-    return () => {
-      observer.disconnect();
-      if (editorRef.current) {
-        editorRef.current.removeEventListener('input', handleEvents);
-        editorRef.current.removeEventListener('keyup', handleEvents);
-      }
-    };
-  }, [editorRef, setContent, updateCounts]);
-  
+    if (editorRef.current && !editorRef.current.innerHTML.trim()) {
+      editorRef.current.innerHTML = content;
+    }
+  }, [content, editorRef]);
+
+  // This effect (and the one inside useEditor) handle input/selection changes
+  // without re‐applying dangerouslySetInnerHTML each time.
+
   return (
     <div className="editor-container" ref={containerRef}>
       <div
@@ -73,10 +34,9 @@ function Editor() {
         className="paper"
         contentEditable="true"
         spellCheck="true"
-        dangerouslySetInnerHTML={{ __html: content }}
       />
       
-      {/* Comment markers */}
+      {/* Render comment markers */}
       {comments.map(comment => (
         <CommentMarker 
           key={comment.id} 

@@ -16,18 +16,19 @@ function FloatingTools() {
     startSpeechRecording,
     stopSpeechRecording,
     isRecording,
-    selection
+    selection,
+    showToast
   } = useAppContext();
-  
+
   const { editorRef } = useEditor();
   const { createComment } = useComments();
   const { startRecording, stopRecording } = useSpeechToText();
-  
+
   const { elementRef, handleMouseDown } = useDraggable(toolbarPosition, (newPosition) => {
     setToolbarPosition(newPosition);
   });
-  
-  // Handle speech-to-text
+
+  // Start or stop speech recognition
   useEffect(() => {
     if (isRecording) {
       startRecording((text, isPartial) => {
@@ -37,15 +38,14 @@ function FloatingTools() {
         }
       });
     }
-    
     return () => {
       if (isRecording) {
         stopRecording();
       }
     };
   }, [isRecording, startRecording, stopRecording]);
-  
-  // AI Rewrite handler
+
+  // Handle AI rewrite
   const handleAIRewrite = () => {
     if (selection && selection.text && selection.text.trim() !== '') {
       startAIRewrite(selection.text);
@@ -53,8 +53,8 @@ function FloatingTools() {
       showToast('Please select text to rewrite', 'warning');
     }
   };
-  
-  // Speech-to-text handler
+
+  // Handle speech button
   const handleSpeechToText = () => {
     if (isRecording) {
       stopSpeechRecording();
@@ -62,26 +62,22 @@ function FloatingTools() {
       startSpeechRecording();
     }
   };
-  
-  // Comment handler
+
+  // Handle adding a comment
   const handleAddComment = () => {
     if (!selection) {
       showToast('Please place cursor where you want to add a comment', 'warning');
       return;
     }
-    
-    // Prompt for comment text
     const commentText = prompt('Enter your comment:');
     if (!commentText || !commentText.trim()) return;
-    
-    // Reconstruct the range
+
+    // If needed, reconstruct the range from selection
     const range = document.createRange();
-    // ... reconstruct range using selection data
-    
-    // Create the comment
+    // ... you can reconstruct the exact range if you want, but for now we use a blank range
     createComment(commentText, range, editorRef);
   };
-  
+
   return (
     <div 
       ref={elementRef}

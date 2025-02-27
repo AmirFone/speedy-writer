@@ -1,3 +1,4 @@
+/* Toolbar styles */
 .toolbar {
 	position: fixed;
 	top: 70px;
@@ -57,7 +58,7 @@
 	bottom: -36px;
 	left: 50%;
 	transform: translateX(-50%) translateY(4px);
-	background-color: var(--text);
+	background-color: var(--text); /* default background */
 	color: white;
 	padding: 4px 8px;
 	border-radius: var(--radius-sm);
@@ -77,6 +78,17 @@
 	visibility: visible;
       }
       
+      /* Dark mode adjustments for tooltip */
+      body.dark-mode .tool-btn .shortcut-tooltip {
+	background-color: #374151; /* dark gray for contrast */
+	color: #f3f4f6;
+      }
+      
+      body.dark-mode .tool-btn .shortcut-tooltip::after {
+	background-color: #374151;
+      }
+      
+      /* Tooltip arrow */
       .shortcut-tooltip::after {
 	content: '';
 	position: absolute;
@@ -88,32 +100,7 @@
 	background-color: var(--text);
       }
       
-      .kbd {
-	display: inline-block;
-	background-color: rgba(255, 255, 255, 0.2);
-	border-radius: 3px;
-	padding: 1px 4px;
-	margin: 0 2px;
-	font-family: monospace;
-	font-size: 11px;
+      /* Adjust arrow in dark mode */
+      body.dark-mode .shortcut-tooltip::after {
+	background-color: #374151;
       }
-
-      /* Fix for dropdown that appears when hovering */
-.tool-btn::after {
-  color: inherit;
-}
-
-/* Fix for Bold dropdown in dark mode */
-body.dark-mode .tool-btn[data-command="bold"]::after,
-body.dark-mode .tool-btn[data-command="italic"]::after,
-body.dark-mode .tool-btn[data-command="underline"]::after,
-body.dark-mode .tool-btn[data-command="strikeThrough"]::after {
-  color: var(--text) !important;
-}
-
-/* Target that specific white box in the screenshot */
-body.dark-mode .toolbar .dropdown,
-body.dark-mode .tool-btn .dropdown {
-  background-color: var(--surface) !important;
-  color: var(--text) !important;
-}
