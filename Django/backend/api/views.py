@@ -85,6 +85,8 @@ def anthropic_rewrite(request):
             "improve their text based on their specific requests. Analyze the text carefully and "
             "make thoughtful improvements while maintaining the original meaning and voice. Only "
             "respond with the improved version of the text, without any explanations or comments."
+            "AND DO NOT BUT THE TEXT IN MARKDOWN OR Any other scripts or shells  just plain text "
+            "with the proper spacing and lining."
         )
 
         # Full prompt to send to Claude
