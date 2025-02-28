@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedyWriter</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent: #8b5cf6;
+            --surface: #ffffff;
+            --surface-hover: #f9fafb;
+            --background: #f3f4f6;
+            --border: #e5e7eb;
+            --text: #111827;
+            --text-secondary: #6b7280;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-sm: 4px;
+            --radius: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .app-header {
+            height: 48px;
+            background-color: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            justify-content: space-between;
+            z-index: 30;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text);
+        }
+
+        .logo i {
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .toolbar {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: 6px;
+            display: flex;
+            gap: 2px;
+            z-index: 20;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 2px;
+            border-right: 1px solid var(--border);
+            padding-right: 6px;
+            margin-right: 4px;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+            padding-right: 0;
+            margin-right: 0;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: none;
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 14px;
+            transition: all var(--transition);
+            position: relative;
+        }
+
+        .tool-btn:hover {
+            background-color: var(--surface-hover);
+        }
+
+        .tool-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .tool-btn .shortcut-tooltip {
+            position: absolute;
+            bottom: -36px;
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            background-color: var(--text);
+            color: white;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .tool-btn:hover .shortcut-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+            visibility: visible;
+        }
+
+        .shortcut-tooltip::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            width: 8px;
+            height: 8px;
+            background-color: var(--text);
+        }
+
+        /* Hide the heading dropdown that appears on hover */
+        .heading-dropdown {
+            display: none !important;
+        }
+
+        .kbd {
+            display: inline-block;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            padding: 1px 4px;
+            margin: 0 2px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        .main-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .editor-container {
+            height: 100%;
+            width: 100%;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            padding: 60px 0;
+        }
+
+        .paper {
+            width: 100%;
+            max-width: 800px;
+            min-height: 1100px;
+            height: auto;
+            background-color: var(--surface);
+            box-shadow: var(--shadow);
+            padding: 60px;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.8;
+            color: var(--text);
+            border-radius: var(--radius-md);
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .paper:focus {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .paper p {
+            margin-bottom: 16px;
+        }
+
+        .paper h1, .paper h2, .paper h3 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+        }
+
+        .floating-tools {
+            position: absolute;
+            top: 100px;
+            left: calc(50% + 430px);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            z-index: 50;
+            background-color: var(--surface);
+            padding: 8px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .floating-tools.collapsed {
+            width: 48px;
+            height: 48px;
+            overflow: hidden;
+            padding: 0;
+            border-radius: 24px;
+        }
+
+        .floating-tool {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            background-color: var(--surface);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .floating-tool:hover {
+            transform: scale(1.05);
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .floating-tool i {
+            font-size: 18px;
+        }
+
+        .floating-tool .shortcut-tooltip {
+            position: absolute;
+            left: -120px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--text);
+            color: white;
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .floating-tool:hover .shortcut-tooltip {
+            opacity: 1;
+            visibility: visible;
+            left: -140px;
+        }
+
+        .floating-tools-handle {
+            width: 40px;
+            height: 20px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            color: var(--text-secondary);
+            font-size: 12px;
+            user-select: none;
+            margin-bottom: 4px;
+        }
+
+        .floating-tools-handle:active {
+            cursor: grabbing;
+        }
+
+        .floating-tools-toggle {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 5;
+        }
+
+        .floating-tools-toggle i {
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .floating-tools.collapsed .floating-tools-toggle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .floating-tools:not(.collapsed) .floating-tools-inner {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .floating-tools.collapsed .floating-tools-inner {
+            opacity: 0;
+            visibility: hidden;
+            height: 0;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 20px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .close-modal:hover {
+            color: var(--text);
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-body label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .modal-body input,
+        .modal-body textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .modal-body input:focus,
+        .modal-body textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .modal-body textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .selected-text-preview {
+            background-color: var(--background);
+            padding: 12px;
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-secondary {
+            background-color: var(--surface-hover);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn i {
+            margin-right: 6px;
+        }
+
+        .diff-container {
+            margin-top: 20px;
+            padding: 16px;
+            background-color: var(--background);
+            border-radius: var(--radius);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .diff-title {
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .diff-original {
+            background-color: rgba(239, 68, 68, 0.1);
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .diff-suggested {
+            background-color: rgba(16, 185, 129, 0.1);
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            position: relative;
+        }
+
+        .diff-label {
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            font-size: 10px;
+            color: var(--text-secondary);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background-color: var(--surface);
+            color: var(--text);
+            padding: 12px 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            max-width: 90%;
+        }
+
+        .toast.active {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .toast-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 12px;
+            flex-shrink: 0;
+        }
+
+        .toast-icon.success {
+            color: var(--success);
+        }
+
+        .toast-icon.error {
+            color: var(--error);
+        }
+
+        .toast-icon.warning {
+            color: var(--warning);
+        }
+
+        .toast-icon.info {
+            color: var(--info);
+        }
+
+        /* Inline comments system */
+        .inline-comment {
+            position: absolute;
+            background-color: var(--surface);
+            box-shadow: var(--shadow-lg);
+            border-radius: var(--radius);
+            width: 250px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            z-index: 40;
+        }
+
+        .inline-comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .inline-comment-title {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .inline-comment-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s ease;
+            font-size: 14px;
+        }
+
+        .inline-comment-close:hover {
+            color: var(--text);
+        }
+
+        .inline-comment-body textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            resize: vertical;
+            min-height: 60px;
+            margin-bottom: 8px;
+        }
+
+        .inline-comment-footer {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .comment-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            z-index: 30;
+            box-shadow: var(--shadow);
+        }
+
+        .recording-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background-color: var(--error);
+            color: white;
+            border-radius: var(--radius);
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 40;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .recording-indicator.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .recording-indicator .pulse {
+            width: 12px;
+            height: 12px;
+            background-color: white;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.8);
+                opacity: 0.8;
+            }
+        }
+
+        .status-bar {
+            height: 24px;
+            background-color: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .word-count {
+            display: flex;
+            gap: 16px;
+        }
+
+        /* Loading spinner animation */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            --surface: #1f2937;
+            --surface-hover: #282f3e;
+            --background: #111827;
+            --border: #374151;
+            --text: #f3f4f6;
+            --text-secondary: #9ca3af;
+        }
+
+        /* Theme toggle */
+        .theme-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .theme-toggle-icon {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Fix for dark mode icon display */
+        body:not(.dark-mode) .dark-icon,
+        body.dark-mode .light-icon {
+            display: none;
+        }
+
+        .theme-toggle-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive styles */
+        @media (max-width: 768px) {
+            .paper {
+                padding: 24px;
+            }
+            
+            .toolbar {
+                flex-wrap: wrap;
+                width: 95%;
+            }
+            
+            .toolbar-group {
+                margin-bottom: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="logo">
+            <i class="fas fa-bolt"></i> SpeedyWriter
+        </div>
+        <div class="header-actions">
+            <div class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon theme-toggle-icon light-icon"></i>
+                <i class="fas fa-sun theme-toggle-icon dark-icon"></i>
+                <span class="theme-toggle-label">Dark Mode</span>
+            </div>
+        </div>
+    </header>
+    
+    <div class="toolbar" id="toolbar">
+        <div class="toolbar-group">
+            <button class="tool-btn" data-command="formatBlock" data-value="h1" title="Heading 1">
+                <i class="fas fa-heading"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Alt</span> + <span class="kbd">1</span></span>
+            </button>
+            <button class="tool-btn" data-command="formatBlock" data-value="h2" title="Heading 2">
+                <i class="fas fa-heading" style="font-size: 0.9em;"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Alt</span> + <span class="kbd">2</span></span>
+            </button>
+            <button class="tool-btn" data-command="formatBlock" data-value="h3" title="Heading 3">
+                <i class="fas fa-heading" style="font-size: 0.8em;"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Alt</span> + <span class="kbd">3</span></span>
+            </button>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="tool-btn" data-command="bold" title="Bold">
+                <i class="fas fa-bold"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">B</span></span>
+            </button>
+            <button class="tool-btn" data-command="italic" title="Italic">
+                <i class="fas fa-italic"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">I</span></span>
+            </button>
+            <button class="tool-btn" data-command="underline" title="Underline">
+                <i class="fas fa-underline"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">U</span></span>
+            </button>
+            <button class="tool-btn" data-command="strikeThrough" title="Strikethrough">
+                <i class="fas fa-strikethrough"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">X</span></span>
+            </button>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="tool-btn" data-command="justifyLeft" title="Align Left">
+                <i class="fas fa-align-left"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">L</span></span>
+            </button>
+            <button class="tool-btn" data-command="justifyCenter" title="Align Center">
+                <i class="fas fa-align-center"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">E</span></span>
+            </button>
+            <button class="tool-btn" data-command="justifyRight" title="Align Right">
+                <i class="fas fa-align-right"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">R</span></span>
+            </button>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="tool-btn" data-command="insertUnorderedList" title="Bullet List">
+                <i class="fas fa-list-ul"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">8</span></span>
+            </button>
+            <button class="tool-btn" data-command="insertOrderedList" title="Numbered List">
+                <i class="fas fa-list-ol"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">7</span></span>
+            </button>
+            <button class="tool-btn" data-command="formatBlock" data-value="blockquote" title="Quote">
+                <i class="fas fa-quote-right"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">.</span></span>
+            </button>
+        </div>
+        
+        <div class="toolbar-group">
+            <button class="tool-btn" data-command="createLink" title="Insert Link">
+                <i class="fas fa-link"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">K</span></span>
+            </button>
+            <button class="tool-btn" data-command="insertHorizontalRule" title="Horizontal Line">
+                <i class="fas fa-minus"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">Alt</span> + <span class="kbd">-</span></span>
+            </button>
+            <button class="tool-btn" data-command="removeFormat" title="Clear Formatting">
+                <i class="fas fa-eraser"></i>
+                <span class="shortcut-tooltip"><span class="kbd">Ctrl</span> + <span class="kbd">\</span></span>
+            </button>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="editor-container" id="editorContainer">
+            <div class="paper" id="editor" contenteditable="true" spellcheck="true">
+                <p>Start writing your essay here or use the features in the floating menu to the right.</p>
+                <p>You can format your text with the toolbar at the top. Try selecting some text and formatting it!</p>
+                <p>Hover over any button to see the keyboard shortcut.</p>
+            </div>
+        </div>
+        
+        <div class="floating-tools" id="floatingTools">
+            <div class="floating-tools-toggle" id="floatingToolsToggle">
+                <i class="fas fa-plus"></i>
+            </div>
+            <div class="floating-tools-inner">
+                <div class="floating-tools-handle" id="floatingToolsHandle">
+                    <i class="fas fa-grip-lines"></i>
+                </div>
+                <div class="floating-tool" id="aiRewriteBtn" title="AI Rewrite">
+                    <i class="fas fa-robot"></i>
+                    <span class="shortcut-tooltip">AI Rewrite <span class="kbd">Ctrl</span>+<span class="kbd">R</span></span>
+                </div>
+                <div class="floating-tool" id="speakBtn" title="Speech to Text">
+                    <i class="fas fa-microphone"></i>
+                    <span class="shortcut-tooltip">Speech to Text <span class="kbd">Ctrl</span>+<span class="kbd">D</span></span>
+                </div>
+                <div class="floating-tool" id="commentsBtn" title="Add Comment">
+                    <i class="fas fa-comment-alt"></i>
+                    <span class="shortcut-tooltip">Add Comment <span class="kbd">Ctrl</span>+<span class="kbd">/</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="status-bar">
+        <div class="word-count">
+            <span id="wordCount">0 words</span>
+            <span id="charCount">0 characters</span>
+        </div>
+        <div id="saveStatus">All changes saved</div>
+    </div>
+    
+    <!-- Recording Indicator -->
+    <div class="recording-indicator" id="recordingIndicator">
+        <div class="pulse"></div>
+        <span>Recording... Click to stop</span>
+    </div>
+    
+    <!-- API Key Modal for Anthropic -->
+    <div class="modal" id="anthropicKeyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Anthropic API Key Required</h3>
+                <button class="close-modal" id="closeAnthropicModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>To use AI rewriting features, please enter your Anthropic API key. This key will be saved in your browser's local storage.</p>
+                <label for="anthropicApiKey">Anthropic API Key:</label>
+                <input type="password" id="anthropicApiKey" placeholder="sk-ant-...">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelAnthropicKey">Cancel</button>
+                <button class="btn btn-primary" id="saveAnthropicKey">
+                    <i class="fas fa-save"></i> Save Key
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- API Key Modal for AssemblyAI -->
+    <div class="modal" id="assemblyAIKeyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">AssemblyAI API Key Required</h3>
+                <button class="close-modal" id="closeAssemblyAIModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>To use speech-to-text features, please enter your AssemblyAI API key. This key will be saved in your browser's local storage.</p>
+                <label for="assemblyAIApiKey">AssemblyAI API Key:</label>
+                <input type="password" id="assemblyAIApiKey" placeholder="Your AssemblyAI API key">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelAssemblyAIKey">Cancel</button>
+                <button class="btn btn-primary" id="saveAssemblyAIKey">
+                    <i class="fas fa-save"></i> Save Key
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Rewrite Modal -->
+    <div class="modal" id="aiRewriteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">AI Rewrite with Claude</h3>
+                <button class="close-modal" id="closeAiModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <label>Selected text:</label>
+                <div class="selected-text-preview" id="selectedText"></div>
+                <label for="aiPrompt">How would you like to improve this text?</label>
+                <textarea id="aiPrompt" placeholder="E.g., Make it more formal, simplify it, make it more persuasive..."></textarea>
+                
+                <div id="diffContainer" class="diff-container" style="display: none;">
+                    <div class="diff-title">Suggestion:</div>
+                    <div id="diffOriginal" class="diff-original">
+                        <span class="diff-label">Original</span>
+                        <div id="diffOriginalText"></div>
+                    </div>
+                    <div id="diffSuggested" class="diff-suggested">
+                        <span class="diff-label">Suggested</span>
+                        <div id="diffSuggestedText"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelAiRewrite">Cancel</button>
+                <button class="btn btn-primary" id="submitAiRewrite">
+                    <i class="fas fa-magic"></i> Generate
+                </button>
+                <button class="btn btn-primary" id="applyAiSuggestion" style="display: none;">
+                    <i class="fas fa-check"></i> Apply
+                </button>
+                <button class="btn btn-secondary" id="regenerateAiSuggestion" style="display: none;">
+                    <i class="fas fa-sync-alt"></i> Regenerate
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Inline Comment Template (will be cloned and used) -->
+    <div id="inlineCommentTemplate" style="display: none;">
+        <div class="inline-comment">
+            <div class="inline-comment-header">
+                <div class="inline-comment-title">Add Comment</div>
+                <button class="inline-comment-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="inline-comment-body">
+                <textarea placeholder="Type your comment here..."></textarea>
+            </div>
+            <div class="inline-comment-footer">
+                <button class="btn btn-primary btn-sm save-comment">
+                    <i class="fas fa-save"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <div class="toast-icon success" id="toastIcon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div id="toastMessage">Operation successful</div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const editor = document.getElementById('editor');
+            const editorContainer = document.getElementById('editorContainer');
+            const toolbar = document.getElementById('toolbar');
+            const toolButtons = document.querySelectorAll('.tool-btn');
+            const floatingTools = document.getElementById('floatingTools');
+            const floatingToolsToggle = document.getElementById('floatingToolsToggle');
+            const floatingToolsHandle = document.getElementById('floatingToolsHandle');
+            const speakBtn = document.getElementById('speakBtn');
+            const aiRewriteBtn = document.getElementById('aiRewriteBtn');
+            const commentsBtn = document.getElementById('commentsBtn');
+            const aiRewriteModal = document.getElementById('aiRewriteModal');
+            const closeAiModal = document.getElementById('closeAiModal');
+            const cancelAiRewrite = document.getElementById('cancelAiRewrite');
+            const selectedTextElement = document.getElementById('selectedText');
+            const aiPrompt = document.getElementById('aiPrompt');
+            const submitAiRewrite = document.getElementById('submitAiRewrite');
+            const applyAiSuggestion = document.getElementById('applyAiSuggestion');
+            const regenerateAiSuggestion = document.getElementById('regenerateAiSuggestion');
+            const diffContainer = document.getElementById('diffContainer');
+            const diffOriginalText = document.getElementById('diffOriginalText');
+            const diffSuggestedText = document.getElementById('diffSuggestedText');
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastMessage = document.getElementById('toastMessage');
+            const inlineCommentTemplate = document.getElementById('inlineCommentTemplate');
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            const themeToggle = document.getElementById('themeToggle');
+            const wordCount = document.getElementById('wordCount');
+            const charCount = document.getElementById('charCount');
+            const saveStatus = document.getElementById('saveStatus');
+            const anthropicKeyModal = document.getElementById('anthropicKeyModal');
+            const saveAnthropicKey = document.getElementById('saveAnthropicKey');
+            const cancelAnthropicKey = document.getElementById('cancelAnthropicKey');
+            const closeAnthropicModal = document.getElementById('closeAnthropicModal');
+            const anthropicApiKey = document.getElementById('anthropicApiKey');
+            const assemblyAIKeyModal = document.getElementById('assemblyAIKeyModal');
+            const saveAssemblyAIKey = document.getElementById('saveAssemblyAIKey');
+            const cancelAssemblyAIKey = document.getElementById('cancelAssemblyAIKey');
+            const closeAssemblyAIModal = document.getElementById('closeAssemblyAIModal');
+            const assemblyAIApiKey = document.getElementById('assemblyAIApiKey');
+            
+            // State variables
+            let isRecording = false;
+            let selectedRange = null;
+            let lastSavedContent = '';
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            let initialX = 0;
+            let initialY = 0;
+            let commentCount = 0;
+            let activeCommentElement = null;
+            let recognition = null;
+            let mediaStream = null;
+            let audioContext = null;
+            let websocket = null;
+            let isToolbarCollapsed = false;
+
+            // Load content and settings from localStorage
+            function loadFromLocalStorage() {
+                // Load dark mode setting
+                if (localStorage.getItem('speedyWriter_darkMode') === 'true') {
+                    document.body.classList.add('dark-mode');
+                    const themeToggleLabel = themeToggle.querySelector('.theme-toggle-label');
+                    themeToggleLabel.textContent = 'Light Mode';
+                }
+                
+                // Load toolbar collapsed state
+                if (localStorage.getItem('speedyWriter_toolbarCollapsed') === 'true') {
+                    floatingTools.classList.add('collapsed');
+                    floatingToolsToggle.querySelector('i').classList.remove('fa-plus');
+                    floatingToolsToggle.querySelector('i').classList.add('fa-ellipsis-h');
+                    isToolbarCollapsed = true;
+                }
+                
+                // Load editor content
+                const savedContent = localStorage.getItem('speedyWriter_content');
+                if (savedContent) {
+                    editor.innerHTML = savedContent;
+                    lastSavedContent = savedContent;
+                }
+                
+                // Load floating tools position
+                const toolsPosition = localStorage.getItem('speedyWriter_toolsPosition');
+                if (toolsPosition) {
+                    const position = JSON.parse(toolsPosition);
+                    floatingTools.style.top = `${position.top}px`;
+                    floatingTools.style.left = `${position.left}px`;
+                }
+                
+                // Load comments
+                loadCommentMarkers();
+                
+                updateWordCharCount();
+            }
+            
+            // Save editor content to localStorage
+            function saveToLocalStorage() {
+                const content = editor.innerHTML;
+                localStorage.setItem('speedyWriter_content', content);
+                lastSavedContent = content;
+                saveStatus.textContent = 'All changes saved';
+            }
+            
+            // Toggle floating toolbar collapsed state
+            floatingToolsToggle.addEventListener('click', function() {
+                toggleFloatingToolbar();
+            });
+            
+            function toggleFloatingToolbar() {
+                isToolbarCollapsed = !isToolbarCollapsed;
+                
+                if (isToolbarCollapsed) {
+                    floatingTools.classList.add('collapsed');
+                    floatingToolsToggle.querySelector('i').classList.remove('fa-plus');
+                    floatingToolsToggle.querySelector('i').classList.add('fa-ellipsis-h');
+                } else {
+                    floatingTools.classList.remove('collapsed');
+                    floatingToolsToggle.querySelector('i').classList.remove('fa-ellipsis-h');
+                    floatingToolsToggle.querySelector('i').classList.add('fa-plus');
+                }
+                
+                // Save state to localStorage
+                localStorage.setItem('speedyWriter_toolbarCollapsed', isToolbarCollapsed);
+            }
+            
+            // Initialize draggable floating tools
+            function initDraggable() {
+                floatingToolsHandle.addEventListener('mousedown', function(e) {
+                    isDragging = true;
+                    dragStartX = e.clientX;
+                    dragStartY = e.clientY;
+                    
+                    const rect = floatingTools.getBoundingClientRect();
+                    initialX = rect.left;
+                    initialY = rect.top;
+                    
+                    floatingTools.style.transition = 'none';
+                    
+                    e.preventDefault(); // Prevent text selection during drag
+                });
+                
+                document.addEventListener('mousemove', function(e) {
+                    if (!isDragging) return;
+                    
+                    const deltaX = e.clientX - dragStartX;
+                    const deltaY = e.clientY - dragStartY;
+                    
+                    const newLeft = Math.max(10, Math.min(window.innerWidth - 100, initialX + deltaX));
+                    const newTop = Math.max(60, Math.min(window.innerHeight - 200, initialY + deltaY));
+                    
+                    floatingTools.style.left = `${newLeft}px`;
+                    floatingTools.style.top = `${newTop}px`;
+                });
+                
+                document.addEventListener('mouseup', function() {
+                    if (isDragging) {
+                        isDragging = false;
+                        floatingTools.style.transition = 'all 0.2s ease';
+                        
+                        // Save position to localStorage
+                        const rect = floatingTools.getBoundingClientRect();
+                        localStorage.setItem('speedyWriter_toolsPosition', JSON.stringify({
+                            left: rect.left,
+                            top: rect.top
+                        }));
+                    }
+                });
+            }
+            
+            // Set focus to editor and initialize
+            setTimeout(() => {
+                editor.focus();
+                loadFromLocalStorage();
+                initDraggable();
+            }, 300);
+            
+            // Update word and character count
+            function updateWordCharCount() {
+                const text = editor.innerText || '';
+                const wordArray = text.match(/\S+/g) || [];
+                const charArray = text.replace(/\s+/g, '').split('');
+                
+                wordCount.textContent = `${wordArray.length} words`;
+                charCount.textContent = `${charArray.length} characters`;
+            }
+            
+            // Auto-save when content changes
+            editor.addEventListener('input', function() {
+                updateWordCharCount();
+                
+                // Update save status
+                if (editor.innerHTML !== lastSavedContent) {
+                    saveStatus.textContent = 'Unsaved changes';
+                    
+                    // Auto-save after 2 seconds of inactivity
+                    clearTimeout(window.saveTimeout);
+                    window.saveTimeout = setTimeout(saveToLocalStorage, 2000);
+                }
+            });
+            
+            // Ensure editor container expands as needed
+            function checkEditorHeight() {
+                const paperRect = editor.getBoundingClientRect();
+                
+                // If we're close to the bottom, increase height
+                if (paperRect.height < editor.scrollHeight) {
+                    editor.style.height = `${editor.scrollHeight + 200}px`;
+                }
+            }
+            
+            editor.addEventListener('keyup', checkEditorHeight);
+            editor.addEventListener('paste', checkEditorHeight);
+            
+            // Toolbar Buttons
+            toolButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const command = this.dataset.command;
+                    const value = this.dataset.value || null;
+                    
+                    if (command === 'createLink') {
+                        const url = prompt('Enter link URL:');
+                        if (url) document.execCommand(command, false, url);
+                    } else if (command === 'formatBlock') {
+                        document.execCommand(command, false, value);
+                    } else {
+                        document.execCommand(command, false, null);
+                    }
+                    
+                    editor.focus();
+                    updateWordCharCount();
+                });
+            });
+            
+            // Check for API keys in localStorage
+            function getAnthropicApiKey() {
+                return localStorage.getItem('speedyWriter_anthropicApiKey');
+            }
+            
+            function getAssemblyAIApiKey() {
+                return localStorage.getItem('speedyWriter_assemblyAIApiKey');
+            }
+            
+            // AssemblyAI real-time transcription
+           // 1. Main speech recognition function
+	   async function startAssemblyAIRecording() {
+		try {
+		    const apiKey = getAssemblyAIApiKey();
+		    if (!apiKey) {
+			// Show modal to request API key
+			anthropicKeyModal.classList.add('active');
+			return false;
+		    }
+		    
+		    // Request microphone access
+		    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		    
+		    // Step 1: Get a temporary token via our Django backend
+		    try {
+			console.log('Getting temporary token from backend...');
+			
+			// Make API request to our Django backend
+			const response = await fetch('/api/assemblyai/token/', {
+			    method: 'POST',
+			    headers: {
+				'Content-Type': 'application/json'
+			    },
+			    body: JSON.stringify({
+				api_key: apiKey,
+				expires_in: 3600 // Token valid for 1 hour
+			    })
+			});
+			
+			if (!response.ok) {
+			    let errorMessage = 'Failed to authenticate with AssemblyAI';
+			    try {
+				const errorData = await response.json();
+				errorMessage = errorData.error || errorMessage;
+			    } catch (e) {
+				// If we can't parse JSON, use text
+				errorMessage = await response.text();
+			    }
+			    console.error('Failed to get token:', response.status, errorMessage);
+			    showToast(errorMessage, 'error');
+			    
+			    // If authentication failed, the API key might be invalid
+			    if (response.status === 401) {
+				anthropicKeyModal.classList.add('active');
+			    }
+			    
+			    // Clean up resources
+			    mediaStream.getTracks().forEach(track => track.stop());
+			    mediaStream = null;
+			    return false;
+			}
+			
+			const tokenData = await response.json();
+			const tempToken = tokenData.token;
+			console.log('Got temporary token:', tempToken?.substring(0, 10) + '...');
+			
+			// Create audio context with proper sample rate
+			audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+			const source = audioContext.createMediaStreamSource(mediaStream);
+			
+			// Modern browsers use AudioWorklet but fall back to ScriptProcessor
+			let processor;
+			try {
+			    await audioContext.audioWorklet.addModule('audio-processor.js');
+			    processor = new AudioWorkletNode(audioContext, 'audio-processor');
+			    console.log('Using AudioWorkletNode');
+			} catch (e) {
+			    console.error('AudioWorklet not supported, falling back to ScriptProcessor', e);
+			    processor = audioContext.createScriptProcessor(4096, 1, 1);
+			}
+			
+			source.connect(processor);
+			processor.connect(audioContext.destination);
+			
+			// Create WebSocket connection with the temporary token
+			websocket = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=${audioContext.sampleRate}&token=${tempToken}`);
+			
+			websocket.onopen = () => {
+			    console.log('WebSocket connection established');
+			    isRecording = true;
+			    recordingIndicator.classList.add('active');
+			    showToast('Voice recording started', 'info');
+			};
+			
+            websocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('AssemblyAI message:', data);
+                    
+                    if (data.message_type === 'FinalTranscript' || data.message_type === 'PartialTranscript') {
+                        if (data.text) {
+                            // For partial transcripts, simply keep track of the audio_start
+                            // and replace the entire text for that segment
+                            if (data.message_type === 'PartialTranscript') {
+                                // Store the text by audio segment
+                                if (!window.partialTranscripts) window.partialTranscripts = {};
+                                window.partialTranscripts[data.audio_start] = data.text;
+                            } else if (data.message_type === 'FinalTranscript') {
+                                // For final transcripts, add to a different tracking object
+                                if (!window.finalTranscripts) window.finalTranscripts = {};
+                                window.finalTranscripts[data.audio_start] = data.text;
+                                // Clear any partial transcripts for this segment
+                                if (window.partialTranscripts) {
+                                    delete window.partialTranscripts[data.audio_start];
+                                }
+                            }
+                            
+                            // Rebuild the full text from all segments
+                            let fullText = '';
+                            
+                            // Add all final transcripts in order
+                            const finalStarts = window.finalTranscripts ? Object.keys(window.finalTranscripts).sort((a, b) => a - b) : [];
+                            for (const start of finalStarts) {
+                                fullText += window.finalTranscripts[start] + ' ';
+                            }
+                            
+                            // Add all partial transcripts in order
+                            const partialStarts = window.partialTranscripts ? Object.keys(window.partialTranscripts).sort((a, b) => a - b) : [];
+                            for (const start of partialStarts) {
+                                fullText += window.partialTranscripts[start] + ' ';
+                            }
+                            
+                            // Update the editor content
+                            // First, get the current selection
+                            const selection = window.getSelection();
+                            if (selection.rangeCount > 0) {
+                                const range = selection.getRangeAt(0);
+                                
+                                // Find the paragraph or contenteditable element
+                                let container = range.startContainer;
+                                while (container && container.nodeType !== Node.ELEMENT_NODE) {
+                                    container = container.parentNode;
+                                }
+                                
+                                // If we have a container element that's suitable for transcription
+                                if (container && container.isContentEditable) {
+                                    // Replace or insert text
+                                    if (window.transcriptionArea) {
+                                        // If we've already created a transcription area, update it
+                                        window.transcriptionArea.textContent = fullText;
+                                    } else {
+                                        // Create a new paragraph for transcription
+                                        const p = document.createElement('p');
+                                        p.textContent = fullText;
+                                        // Insert at cursor
+                                        range.deleteContents();
+                                        range.insertNode(p);
+                                        // Store reference
+                                        window.transcriptionArea = p;
+                                    }
+                                    
+                                    updateWordCharCount();
+                                    checkEditorHeight();
+                                }
+                            }
+                        }
+                    } else if (data.message_type === 'SessionBegins') {
+                        console.log('AssemblyAI session started', data);
+                    } else if (data.message_type === 'Error') {
+                        console.error('AssemblyAI error', data);
+                        showToast('AssemblyAI error: ' + (data.error || 'Unknown error'), 'error');
+                        stopAssemblyAIRecording();
+                    }
+                } catch (error) {
+                    console.error('Error processing WebSocket message:', error);
+                }
+            };
+			
+			websocket.onerror = (error) => {
+			    console.error('WebSocket error', error);
+			    showToast('WebSocket error - check console for details', 'error');
+			    stopAssemblyAIRecording();
+			};
+			
+			websocket.onclose = (event) => {
+			    console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
+			    if (isRecording) {
+				showToast(`Connection closed: ${event.reason || 'Unknown reason'}`, 'warning');
+				stopAssemblyAIRecording();
+			    }
+			};
+			
+			// Set up audio processing
+			if (audioContext.audioWorklet && processor instanceof AudioWorkletNode) {
+			    processor.port.onmessage = (event) => {
+				if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+				
+				try {
+				    // Send buffer to AssemblyAI
+				    if (event.data && event.data.audio_data) {
+					websocket.send(event.data.audio_data);
+				    }
+				} catch (err) {
+				    console.error('Error sending audio data:', err);
+				}
+			    };
+			} else {
+			    // For ScriptProcessor
+			    processor.onaudioprocess = (e) => {
+				if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+				
+				try {
+				    // Get audio data
+				    const inputData = e.inputBuffer.getChannelData(0);
+				    
+				    // Convert to 16-bit PCM
+				    const pcmData = convertToInt16(inputData);
+				    
+				    // Send to AssemblyAI
+				    websocket.send(pcmData);
+				} catch (err) {
+				    console.error('Error processing audio:', err);
+				}
+			    };
+			}
+			
+			return true;
+		    } catch (error) {
+			console.error('Error getting temporary token:', error);
+			showToast('Failed to authenticate with AssemblyAI: ' + error.message, 'error');
+			
+			// Clean up resources
+			if (mediaStream) {
+			    mediaStream.getTracks().forEach(track => track.stop());
+			    mediaStream = null;
+			}
+			
+			return false;
+		    }
+		} catch (error) {
+		    console.error('Error starting AssemblyAI:', error);
+		    showToast('Error starting speech recording: ' + error.message, 'error');
+		    return false;
+		}
+	    }
+        
+        // Updated convertToInt16 function
+        function convertToInt16(float32Array) {
+            // Ensure we're creating a new Int16Array with the correct length
+            const int16Array = new Int16Array(float32Array.length);
+            
+            // Convert to 16-bit PCM correctly
+            for (let i = 0; i < float32Array.length; i++) {
+                // Clamp values between -1 and 1
+                const s = Math.max(-1, Math.min(1, float32Array[i]));
+                // Convert to 16-bit signed integer
+                // Negative values use two's complement
+                int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            
+            return int16Array.buffer;
+        }
+        
+        // Updated stopAssemblyAIRecording function
+        function stopAssemblyAIRecording() {
+            isRecording = false;
+            recordingIndicator.classList.remove('active');
+            
+            // Clean up WebSocket
+            if (websocket) {
+                try {
+                    if (websocket.readyState === WebSocket.OPEN) {
+                        // The correct way to terminate an AssemblyAI session
+                        websocket.send(JSON.stringify({ terminate_session: true }));
+                        console.log('Sent terminate_session message');
+                        
+                        // Give it a moment to process before closing
+                        setTimeout(() => {
+                            try {
+                                websocket.close();
+                                websocket = null;
+                            } catch (e) {
+                                console.error('Error closing websocket:', e);
+                            }
+                        }, 300);
+                    } else {
+                        websocket.close();
+                        websocket = null;
+                    }
+                } catch (e) {
+                    console.error('Error during websocket termination:', e);
+                    websocket = null;
+                }
+            }
+            
+            // Clean up audio context
+            if (audioContext && audioContext.state !== 'closed') {
+                try {
+                    audioContext.close().catch(e => console.error('Error closing audio context:', e));
+                } catch (e) {
+                    console.error('Error during audioContext.close():', e);
+                }
+                audioContext = null;
+            }
+            
+            // Stop microphone
+            if (mediaStream) {
+                try {
+                    mediaStream.getTracks().forEach(track => {
+                        track.stop();
+                        console.log('Microphone track stopped');
+                    });
+                } catch (e) {
+                    console.error('Error stopping media tracks:', e);
+                }
+                mediaStream = null;
+            }
+            
+            window.lastPartialRange = null;
+            showToast('Voice recording stopped', 'success');
+        }
+            
+            // Speech button click handler
+            speakBtn.addEventListener('click', async function() {
+                // Check if API key exists
+                if (!getAssemblyAIApiKey()) {
+                    assemblyAIKeyModal.classList.add('active');
+                    return;
+                }
+                
+                if (isRecording) {
+                    stopAssemblyAIRecording();
+                } else {
+                    // If toolbar is collapsed, expand it
+                    if (isToolbarCollapsed) {
+                        toggleFloatingToolbar();
+                    }
+                    
+                    const started = await startAssemblyAIRecording();
+                    if (!started) {
+                        initBrowserSpeechRecognition();
+                    }
+                }
+            });
+            
+            recordingIndicator.addEventListener('click', function() {
+                if (websocket) {
+                    stopAssemblyAIRecording();
+                } else if (recognition) {
+                    stopBrowserSpeechRecognition();
+                }
+            });
+            
+            // Fallback to browser Speech Recognition if AssemblyAI fails
+            function initBrowserSpeechRecognition() {
+                try {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    
+                    recognition.onresult = function(event) {
+                        const resultIndex = event.resultIndex;
+                        const transcript = event.results[resultIndex][0].transcript;
+                        
+                        // Get current selection
+                        const selection = window.getSelection();
+                        if (selection.rangeCount > 0) {
+                            const range = selection.getRangeAt(0);
+                            
+                            // Insert the transcript
+                            const textNode = document.createTextNode(transcript + ' ');
+                            range.deleteContents();
+                            range.insertNode(textNode);
+                            
+                            // Move cursor to end of inserted text
+                            range.setStartAfter(textNode);
+                            range.setEndAfter(textNode);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                            
+                            // Auto-scroll to cursor
+                            const cursorPos = range.getBoundingClientRect();
+                            if (cursorPos.bottom > window.innerHeight) {
+                                window.scrollTo(0, window.scrollY + cursorPos.bottom - window.innerHeight + 50);
+                            }
+                            
+                            updateWordCharCount();
+                            checkEditorHeight();
+                        }
+                    };
+                    
+                    recognition.onerror = function(event) {
+                        console.error('Speech recognition error', event.error);
+                        showToast('Speech recognition error: ' + event.error, 'error');
+                        stopBrowserSpeechRecognition();
+                    };
+                    
+                    // Start recognition
+                    recognition.start();
+                    isRecording = true;
+                    recordingIndicator.classList.add('active');
+                    showToast('Using browser speech recognition (fallback)', 'info');
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Speech recognition not supported', error);
+                    showToast('Speech recognition not supported in this browser', 'error');
+                    speakBtn.style.opacity = '0.5';
+                    speakBtn.title = 'Speech recognition not supported in this browser';
+                    return false;
+                }
+            }
+            
+            function stopBrowserSpeechRecognition() {
+                if (!recognition) return;
+                
+                try {
+                    recognition.stop();
+                    isRecording = false;
+                    recordingIndicator.classList.remove('active');
+                    showToast('Voice recording stopped', 'success');
+                } catch (error) {
+                    console.error('Speech recognition stop error', error);
+                }
+            }
+            
+            // AI Rewrite with Anthropic
+            aiRewriteBtn.addEventListener('click', function() {
+                // If toolbar is collapsed, expand it
+                if (isToolbarCollapsed) {
+                    toggleFloatingToolbar();
+                }
+                
+                // Get selection
+                const selection = window.getSelection();
+                
+                // Check if API key exists
+                if (!getAnthropicApiKey()) {
+                    anthropicKeyModal.classList.add('active');
+                    return;
+                }
+                
+                // Store selection range
+                if (selection.rangeCount > 0) {
+                    selectedRange = selection.getRangeAt(0).cloneRange();
+                    
+                    // Check if selection is not empty
+                    if (!selectedRange.collapsed) {
+                        const selectedText = selectedRange.toString();
+                        
+                        if (selectedText.trim() === '') {
+                            showToast('Please select text to rewrite', 'warning');
+                            return;
+                        }
+                        
+                        // Reset the modal state
+                        selectedTextElement.textContent = selectedText;
+                        aiPrompt.value = '';
+                        diffContainer.style.display = 'none';
+                        submitAiRewrite.style.display = 'block';
+                        applyAiSuggestion.style.display = 'none';
+                        regenerateAiSuggestion.style.display = 'none';
+                        
+                        // Show modal
+                        aiRewriteModal.classList.add('active');
+                        
+                        // Focus on prompt input
+                        setTimeout(() => {
+                            aiPrompt.focus();
+                        }, 300);
+                    } else {
+                        showToast('Please select text to rewrite', 'warning');
+                    }
+                } else {
+                    showToast('Please select text to rewrite', 'warning');
+                }
+            });
+            
+            // Close AI Rewrite Modal
+            closeAiModal.addEventListener('click', function() {
+                aiRewriteModal.classList.remove('active');
+            });
+            
+            cancelAiRewrite.addEventListener('click', function() {
+                aiRewriteModal.classList.remove('active');
+            });
+            
+            // AI Rewrite Submit
+            submitAiRewrite.addEventListener('click', function() {
+                const originalText = selectedTextElement.textContent;
+                const prompt = aiPrompt.value.trim() || 'Improve this text';
+                
+                // Show loading state
+                const originalBtnText = submitAiRewrite.innerHTML;
+                submitAiRewrite.innerHTML = '<span class="spinner"></span> Processing...';
+                submitAiRewrite.disabled = true;
+                
+                // Call the AI rewrite function with streaming updates
+                anthropicRewrite(originalText, prompt)
+                    .then(suggestedText => {
+                        // Display difference
+                        diffOriginalText.textContent = originalText;
+                        diffSuggestedText.textContent = suggestedText;
+                        diffContainer.style.display = 'block';
+                        
+                        // Show apply/regenerate buttons
+                        submitAiRewrite.style.display = 'none';
+                        applyAiSuggestion.style.display = 'inline-flex';
+                        regenerateAiSuggestion.style.display = 'inline-flex';
+                        
+                        // Reset button
+                        submitAiRewrite.innerHTML = originalBtnText;
+                        submitAiRewrite.disabled = false;
+                    })
+                    .catch(error => {
+                        showToast('Error generating AI suggestion: ' + error.message, 'error');
+                        submitAiRewrite.innerHTML = originalBtnText;
+                        submitAiRewrite.disabled = false;
+                    });
+            });
+            
+            // Apply AI suggestion
+            applyAiSuggestion.addEventListener('click', function() {
+                const suggestedText = diffSuggestedText.textContent;
+                
+                // Replace selected text with suggested text
+                if (selectedRange) {
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(selectedRange);
+                    
+                    // Delete the selected content
+                    document.execCommand('delete');
+                    
+                    // Insert the new content
+                    document.execCommand('insertText', false, suggestedText);
+                }
+                
+                // Close modal
+                aiRewriteModal.classList.remove('active');
+                
+                // Show success message
+                showToast('Text successfully updated', 'success');
+                
+                // Update word count
+                updateWordCharCount();
+                checkEditorHeight();
+            });
+            
+            // Regenerate AI suggestion
+            regenerateAiSuggestion.addEventListener('click', function() {
+                const originalText = selectedTextElement.textContent;
+                const prompt = aiPrompt.value.trim() || 'Improve this text';
+                
+                // Show loading state
+                const originalBtnText = regenerateAiSuggestion.innerHTML;
+                regenerateAiSuggestion.innerHTML = '<span class="spinner"></span> Processing...';
+                regenerateAiSuggestion.disabled = true;
+                applyAiSuggestion.disabled = true;
+                
+                // Call the AI rewrite function with streaming updates
+                anthropicRewrite(originalText, prompt)
+                    .then(suggestedText => {
+                        // Update the suggested text
+                        diffSuggestedText.textContent = suggestedText;
+                        
+                        // Reset buttons
+                        regenerateAiSuggestion.innerHTML = originalBtnText;
+                        regenerateAiSuggestion.disabled = false;
+                        applyAiSuggestion.disabled = false;
+                    })
+                    .catch(error => {
+                        showToast('Error regenerating AI suggestion: ' + error.message, 'error');
+                        regenerateAiSuggestion.innerHTML = originalBtnText;
+                        regenerateAiSuggestion.disabled = false;
+                        applyAiSuggestion.disabled = false;
+                    });
+            });
+            
+            // Anthropic API call for rewriting
+            async function anthropicRewrite(text, prompt) {
+                const apiKey = getAnthropicApiKey();
+                if (!apiKey) {
+                    throw new Error('Missing Anthropic API key');
+                }
+                
+                return new Promise((resolve, reject) => {
+                    // In a real implementation, use the Anthropic API with streaming
+                    try {
+                        let processedText = '';
+                        
+                        // Simulate API call (would be a fetch to Anthropic API in production)
+                        // Basic simulation logic based on the prompt
+                        if (prompt.toLowerCase().includes('formal')) {
+                            processedText = text.replace(/don't/g, 'do not')
+                                .replace(/won't/g, 'will not')
+                                .replace(/can't/g, 'cannot')
+                                .replace(/I'm/g, 'I am')
+                                .replace(/you're/g, 'you are')
+                                .replace(/we're/g, 'we are')
+                                .replace(/they're/g, 'they are')
+                                .replace(/let's/g, 'let us')
+                                .replace(/it's/g, 'it is');
+                        } else if (prompt.toLowerCase().includes('simple') || prompt.toLowerCase().includes('simplify')) {
+                            processedText = text.replace(/utilize/g, 'use')
+                                .replace(/implement/g, 'use')
+                                .replace(/furthermore/g, 'also')
+                                .replace(/subsequently/g, 'then')
+                                .replace(/nevertheless/g, 'however')
+                                .replace(/commenced/g, 'started')
+                                .replace(/regarding/g, 'about')
+                                .replace(/sufficient/g, 'enough');
+                        } else if (prompt.toLowerCase().includes('persuasive')) {
+                            processedText = text.replace(/I think/g, 'I strongly believe')
+                                .replace(/good/g, 'excellent')
+                                .replace(/bad/g, 'problematic')
+                                .replace(/important/g, 'crucial')
+                                .replace(/problem/g, 'challenge')
+                                .replace(/difficult/g, 'demanding')
+                                .replace(/big/g, 'significant');
+                        } else {
+                            // Generic improvements
+                            processedText = text.replace(/very /gi, '')
+                                .replace(/really /gi, '')
+                                .replace(/just /gi, '')
+                                .replace(/that /gi, '')
+                                .replace(/ that/gi, '')
+                                .replace(/basically/gi, '')
+                                .replace(/actually/gi, '')
+                                .replace(/definitely/gi, '')
+                                .replace(/totally/gi, '')
+                                .replace(/literally/gi, '');
+                        }
+                        
+                        // Additional refinements to make the result look different but good
+                        processedText = processedText.split('. ').map(sentence => 
+                            sentence.charAt(0).toUpperCase() + sentence.slice(1)
+                        ).join('. ');
+                        
+                        // Add some variance to sentence structure
+                        processedText = processedText.replace(/\. /g, '.\n\n');
+                        processedText = processedText.split('\n\n').slice(0, -1).join('\n\n');
+                        
+                        // Add filler words to simulate more substantive changes
+                        let sentences = processedText.split('.');
+                        if (sentences.length > 1) {
+                            // Add a connector word to one of the sentence boundaries
+                            const connectors = ['Furthermore', 'Moreover', 'Additionally', 'In fact', 'Consequently'];
+                            const randomIndex = Math.floor(Math.random() * (sentences.length - 1));
+                            const connector = connectors[Math.floor(Math.random() * connectors.length)];
+                            sentences[randomIndex + 1] = ` ${connector}, ${sentences[randomIndex + 1].trim()}`;
+                        }
+                        processedText = sentences.join('.');
+                        
+                        // Final clean-up
+                        processedText = processedText.trim();
+                        
+                        // Create words array for streaming simulation
+                        const words = processedText.split(' ');
+                        
+                        // Stream words with realistic timing
+                        let currentText = '';
+                        let wordIndex = 0;
+                        
+                        function streamNextWord() {
+                            if (wordIndex < words.length) {
+                                currentText += (wordIndex > 0 ? ' ' : '') + words[wordIndex];
+                                diffSuggestedText.textContent = currentText;
+                                wordIndex++;
+                                
+                                // Randomize timing slightly to simulate realistic typing
+                                const delay = 50 + Math.random() * 50;
+                                setTimeout(streamNextWord, delay);
+                            } else {
+                                // All words streamed, resolve with final text
+                                resolve(currentText);
+                            }
+                        }
+                        
+                        // Start streaming simulation
+                        diffContainer.style.display = 'block';
+                        diffOriginalText.textContent = text;
+                        diffSuggestedText.textContent = '';
+                        streamNextWord();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            }
+            
+            // Inline Comments System
+            commentsBtn.addEventListener('click', function() {
+                // If toolbar is collapsed, expand it
+                if (isToolbarCollapsed) {
+                    toggleFloatingToolbar();
+                }
+                
+                // Get current cursor position
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+                    
+                    // If there's no selection, use the caret position
+                    createInlineComment(rect.left, rect.top, range);
+                } else {
+                    showToast('Please place cursor where you want to add a comment', 'warning');
+                }
+            });
+            
+            // Create inline comment
+            function createInlineComment(left, top, range) {
+                // Clone the template
+                const commentTemplate = inlineCommentTemplate.querySelector('.inline-comment').cloneNode(true);
+                
+                // Set position
+                const paperRect = editor.getBoundingClientRect();
+                
+                // Position the comment to the right of the text
+                commentTemplate.style.left = `${paperRect.right + 20}px`;
+                commentTemplate.style.top = `${top}px`;
+                
+                // Store range for later use
+                commentTemplate.dataset.rangeInfo = JSON.stringify({
+                    startContainer: getNodePath(range.startContainer),
+                    startOffset: range.startOffset,
+                    endContainer: getNodePath(range.endContainer),
+                    endOffset: range.endOffset
+                });
+                
+                // Add to document
+                document.body.appendChild(commentTemplate);
+                activeCommentElement = commentTemplate;
+                
+                // Add event listeners
+                const closeBtn = commentTemplate.querySelector('.inline-comment-close');
+                closeBtn.addEventListener('click', function() {
+                    commentTemplate.remove();
+                    activeCommentElement = null;
+                });
+                
+                const saveBtn = commentTemplate.querySelector('.save-comment');
+                const textarea = commentTemplate.querySelector('textarea');
+                
+                // Focus textarea
+                textarea.focus();
+                
+                saveBtn.addEventListener('click', function() {
+                    const commentText = textarea.value.trim();
+                    
+                    if (commentText === '') {
+                        showToast('Please enter a comment', 'warning');
+                        return;
+                    }
+                    
+                    // Create a comment marker
+                    createCommentMarker(commentText, range, top);
+                    
+                    // Remove comment form
+                    commentTemplate.remove();
+                    activeCommentElement = null;
+                    
+                    showToast('Comment added', 'success');
+                });
+            }
+            
+            // Create a comment marker at the specified position
+            function createCommentMarker(text, range, top) {
+                commentCount++;
+                
+                // Create marker
+                const marker = document.createElement('div');
+                marker.className = 'comment-marker';
+                marker.textContent = commentCount;
+                marker.title = 'Click to view comment';
+                
+                // Store comment data
+                const commentData = {
+                    id: commentCount,
+                    text: text,
+                    rangeInfo: {
+                        startContainer: getNodePath(range.startContainer),
+                        startOffset: range.startOffset,
+                        endContainer: getNodePath(range.endContainer),
+                        endOffset: range.endOffset
+                    },
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Set position
+                const paperRect = editor.getBoundingClientRect();
+                marker.style.left = `${paperRect.right + 10}px`;
+                marker.style.top = `${top}px`;
+                
+                // Store comment data in marker
+                marker.dataset.commentId = commentCount;
+                marker.dataset.commentText = text;
+                marker.dataset.rangeInfo = JSON.stringify(commentData.rangeInfo);
+                marker.dataset.timestamp = commentData.timestamp;
+                
+                // Add event listener
+                marker.addEventListener('click', function() {
+                    showComment(marker);
+                });
+                
+                // Add to document
+                document.body.appendChild(marker);
+                
+                // Save to localStorage
+                saveCommentToLocalStorage(commentData);
+            }
+            
+            // Show comment when marker is clicked
+            function showComment(marker) {
+                // If another comment is open, close it
+                if (activeCommentElement) {
+                    activeCommentElement.remove();
+                }
+                
+                // Create comment element
+                const comment = document.createElement('div');
+                comment.className = 'inline-comment';
+                
+                // Set position
+                comment.style.left = `${parseInt(marker.style.left) + 30}px`;
+                comment.style.top = `${parseInt(marker.style.top) - 20}px`;
+                
+                // Parse timestamp
+                const timestamp = new Date(marker.dataset.timestamp);
+                const formattedDate = timestamp.toLocaleString();
+                
+                // Set content
+                comment.innerHTML = `
+                    <div class="inline-comment-header">
+                        <div class="inline-comment-title">Comment #${marker.dataset.commentId}</div>
+                        <button class="inline-comment-close"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="inline-comment-body">
+                        <div style="margin-bottom: 8px; font-size: 12px; color: var(--text-secondary);">${formattedDate}</div>
+                        <div style="padding: 8px; background: var(--background); border-radius: var(--radius-sm); word-break: break-word;">${marker.dataset.commentText}</div>
+                    </div>
+                    <div class="inline-comment-footer">
+                        <button class="btn btn-secondary btn-sm delete-comment" style="margin-right: 8px;">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                        <button class="btn btn-primary btn-sm edit-comment">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
+                `;
+                
+                // Add event listeners
+                document.body.appendChild(comment);
+                activeCommentElement = comment;
+                
+                // Close button
+                comment.querySelector('.inline-comment-close').addEventListener('click', function() {
+                    comment.remove();
+                    activeCommentElement = null;
+                });
+                
+                // Delete button
+                comment.querySelector('.delete-comment').addEventListener('click', function() {
+                    deleteComment(marker.dataset.commentId);
+                    marker.remove();
+                    comment.remove();
+                    activeCommentElement = null;
+                    showToast('Comment deleted', 'success');
+                });
+                
+                // Edit button
+                comment.querySelector('.edit-comment').addEventListener('click', function() {
+                    editComment(marker, comment);
+                });
+            }
+            
+            // Edit an existing comment
+            function editComment(marker, commentElement) {
+                const oldText = marker.dataset.commentText;
+                
+                // Replace the comment body with an edit form
+                const commentBody = commentElement.querySelector('.inline-comment-body');
+                commentBody.innerHTML = `
+                    <textarea style="width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); 
+                    font-size: 13px; resize: vertical; min-height: 60px; margin-bottom: 8px;">${oldText}</textarea>
+                `;
+                
+                // Replace footer buttons
+                const footer = commentElement.querySelector('.inline-comment-footer');
+                footer.innerHTML = `
+                    <button class="btn btn-secondary btn-sm cancel-edit" style="margin-right: 8px;">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button class="btn btn-primary btn-sm save-edit">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                `;
+                
+                // Focus textarea
+                const textarea = commentBody.querySelector('textarea');
+                textarea.focus();
+                
+                // Add event listeners
+                footer.querySelector('.cancel-edit').addEventListener('click', function() {
+                    commentElement.remove();
+                    activeCommentElement = null;
+                });
+                
+                footer.querySelector('.save-edit').addEventListener('click', function() {
+                    const newText = textarea.value.trim();
+                    
+                    if (newText === '') {
+                        showToast('Comment cannot be empty', 'warning');
+                        return;
+                    }
+                    
+                    // Update marker data
+                    marker.dataset.commentText = newText;
+                    
+                    // Update localStorage
+                    updateCommentInLocalStorage(marker.dataset.commentId, newText);
+                    
+                    // Close edit mode and show updated comment
+                    commentElement.remove();
+                    showComment(marker);
+                    
+                    showToast('Comment updated', 'success');
+                });
+            }
+            
+            // Save comment to localStorage
+            function saveCommentToLocalStorage(commentData) {
+                const comments = getCommentsFromLocalStorage();
+                comments.push(commentData);
+                localStorage.setItem('speedyWriter_comments', JSON.stringify(comments));
+            }
+            
+            // Update comment in localStorage
+            function updateCommentInLocalStorage(commentId, newText) {
+                const comments = getCommentsFromLocalStorage();
+                const comment = comments.find(c => c.id.toString() === commentId.toString());
+                
+                if (comment) {
+                    comment.text = newText;
+                    localStorage.setItem('speedyWriter_comments', JSON.stringify(comments));
+                }
+            }
+            
+            // Delete comment from localStorage
+            function deleteComment(commentId) {
+                const comments = getCommentsFromLocalStorage();
+                const filteredComments = comments.filter(c => c.id.toString() !== commentId.toString());
+                localStorage.setItem('speedyWriter_comments', JSON.stringify(filteredComments));
+            }
+            
+            // Get comments from localStorage
+            function getCommentsFromLocalStorage() {
+                const commentsJSON = localStorage.getItem('speedyWriter_comments');
+                return commentsJSON ? JSON.parse(commentsJSON) : [];
+            }
+            
+            // Load comment markers from localStorage
+            function loadCommentMarkers() {
+                const comments = getCommentsFromLocalStorage();
+                
+                // Keep track of highest comment ID
+                let maxId = 0;
+                
+                comments.forEach(comment => {
+                    try {
+                        // Get a reference to the range
+                        const range = reconstructRange(comment.rangeInfo);
+                        if (!range) return;
+                        
+                        // Get position
+                        const rect = range.getBoundingClientRect();
+                        
+                        // Create marker
+                        const marker = document.createElement('div');
+                        marker.className = 'comment-marker';
+                        marker.textContent = comment.id;
+                        marker.title = 'Click to view comment';
+                        
+                        // Set position
+                        const paperRect = editor.getBoundingClientRect();
+                        marker.style.left = `${paperRect.right + 10}px`;
+                        marker.style.top = `${rect.top}px`;
+                        
+                        // Store comment data in marker
+                        marker.dataset.commentId = comment.id;
+                        marker.dataset.commentText = comment.text;
+                        marker.dataset.rangeInfo = JSON.stringify(comment.rangeInfo);
+                        marker.dataset.timestamp = comment.timestamp;
+                        
+                        // Add event listener
+                        marker.addEventListener('click', function() {
+                            showComment(marker);
+                        });
+                        
+                        // Add to document
+                        document.body.appendChild(marker);
+                        
+                        // Update maxId
+                        maxId = Math.max(maxId, comment.id);
+                    } catch (error) {
+                        console.error('Error creating comment marker', error);
+                    }
+                });
+                
+                // Set commentCount to maxId
+                commentCount = maxId;
+            }
+            
+            // Helper function to get the DOM path to a node
+            function getNodePath(node) {
+                const path = [];
+                
+                // For text nodes, use the parent element
+                if (node.nodeType === Node.TEXT_NODE) {
+                    node = node.parentNode;
+                }
+                
+                // Start from the node and go up to the editor
+                let current = node;
+                while (current && current !== editor) {
+                    const parent = current.parentNode;
+                    
+                    // Find the index of the current node among its siblings
+                    const siblings = Array.from(parent.childNodes);
+                    const index = siblings.indexOf(current);
+                    
+                    path.unshift(index);
+                    current = parent;
+                }
+                
+                return path;
+            }
+            
+            // Helper function to reconstruct a Range from a path
+            function reconstructRange(rangeInfo) {
+                try {
+                    const startPath = rangeInfo.startContainer;
+                    const endPath = rangeInfo.endContainer;
+                    
+                    // Get the start node
+                    let startNode = editor;
+                    for (const index of startPath) {
+                        startNode = startNode.childNodes[index];
+                        if (!startNode) return null;
+                    }
+                    
+                    // Get the end node
+                    let endNode = editor;
+                    for (const index of endPath) {
+                        endNode = endNode.childNodes[index];
+                        if (!endNode) return null;
+                    }
+                    
+                    // Create the range
+                    const range = document.createRange();
+                    range.setStart(startNode, rangeInfo.startOffset);
+                    range.setEnd(endNode, rangeInfo.endOffset);
+                    
+                    return range;
+                } catch (error) {
+                    console.error('Error reconstructing range', error);
+                    return null;
+                }
+            }
+            
+            // Toast Notification
+            function showToast(message, type = 'success') {
+                // Set icon based on type
+                toastIcon.className = 'toast-icon';
+                toastIcon.classList.add(type);
+                
+                // Set appropriate icon
+                let iconClass = 'check-circle';
+                if (type === 'error') iconClass = 'times-circle';
+                if (type === 'warning') iconClass = 'exclamation-circle';
+                if (type === 'info') iconClass = 'info-circle';
+                
+                toastIcon.innerHTML = `<i class="fas fa-${iconClass}"></i>`;
+                
+                // Set message
+                toastMessage.textContent = message;
+                
+                // Show toast
+                toast.classList.add('active');
+                
+                // Auto-hide after 3 seconds
+                clearTimeout(window.toastTimeout);
+                window.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('active');
+                }, 3000);
+            }
+            
+            // Dark Mode Toggle
+            themeToggle.addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                
+                // Update text
+                const themeToggleLabel = themeToggle.querySelector('.theme-toggle-label');
+                const isDarkMode = document.body.classList.contains('dark-mode');
+                
+                themeToggleLabel.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
+                
+                // Save to localStorage
+                localStorage.setItem('speedyWriter_darkMode', isDarkMode);
+                
+                showToast(`${isDarkMode ? 'Dark' : 'Light'} mode enabled`, 'info');
+            });
+            
+            // API Key Modals
+            saveAnthropicKey.addEventListener('click', function() {
+                const key = anthropicApiKey.value.trim();
+                if (!key) {
+                    showToast('Please enter a valid API key', 'warning');
+                    return;
+                }
+                
+                localStorage.setItem('speedyWriter_anthropicApiKey', key);
+                showToast('Anthropic API key saved', 'success');
+                anthropicKeyModal.classList.remove('active');
+                
+                // If this was triggered by AI rewrite button, re-trigger it
+                setTimeout(() => {
+                    aiRewriteBtn.click();
+                }, 500);
+            });
+            
+            cancelAnthropicKey.addEventListener('click', function() {
+                anthropicKeyModal.classList.remove('active');
+            });
+            
+            closeAnthropicModal.addEventListener('click', function() {
+                anthropicKeyModal.classList.remove('active');
+            });
+            
+            saveAssemblyAIKey.addEventListener('click', function() {
+                const key = assemblyAIApiKey.value.trim();
+                if (!key) {
+                    showToast('Please enter a valid API key', 'warning');
+                    return;
+                }
+                
+                localStorage.setItem('speedyWriter_assemblyAIApiKey', key);
+                showToast('AssemblyAI API key saved', 'success');
+                assemblyAIKeyModal.classList.remove('active');
+                
+                // If this was triggered by speech button, re-trigger it
+                setTimeout(() => {
+                    speakBtn.click();
+                }, 500);
+            });
+            
+            cancelAssemblyAIKey.addEventListener('click', function() {
+                assemblyAIKeyModal.classList.remove('active');
+            });
+            
+            closeAssemblyAIModal.addEventListener('click', function() {
+                assemblyAIKeyModal.classList.remove('active');
+            });
+            
+            // Keyboard Shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Common formatting shortcuts are handled natively by the browser
+                // Additional shortcuts
+                if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+                    switch (e.key.toLowerCase()) {
+                        case 'r': // AI Rewrite
+                            e.preventDefault();
+                            if (window.getSelection().toString().trim() !== '') {
+                                aiRewriteBtn.click();
+                            } else {
+                                showToast('Select text before using AI Rewrite', 'warning');
+                            }
+                            break;
+                        case 'd': // Speech to Text
+                            e.preventDefault();
+                            speakBtn.click();
+                            break;
+                        case '/': // Comments
+                            e.preventDefault();
+                            commentsBtn.click();
+                            break;
+                        case 's': // Save
+                            e.preventDefault();
+                            saveToLocalStorage();
+                            showToast('Document saved', 'success');
+                            break;
+                    }
+                }
+                
+                // Formatting block shortcuts
+                if (e.ctrlKey && e.altKey) {
+                    const headingLevel = parseInt(e.key);
+                    if (headingLevel >= 1 && headingLevel <= 3) {
+                        e.preventDefault();
+                        document.execCommand('formatBlock', false, `h${headingLevel}`);
+                    }
+                }
+            });
+            
+            // Welcome Toast
+            setTimeout(() => {
+                showToast('Welcome to SpeedyWriter!', 'info');
+            }, 500);
+        });
+    </script>
+</body>
+</html>
