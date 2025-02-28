@@ -1310,268 +1310,268 @@
             
             // AssemblyAI real-time transcription
            // 1. Main speech recognition function
-            async function startAssemblyAIRecording() {
-                try {
-                    const apiKey = getAssemblyAIApiKey();
-                    if (!apiKey) {
-                        showToast('Missing AssemblyAI API key', 'error');
-                        return false;
-                    }
-                    
-                    // Request microphone access first
-                    try {
-                        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    } catch (err) {
-                        console.error("Couldn't access microphone:", err);
-                        showToast("Microphone access denied", 'error');
-                        return false;
-                    }
-                    
-                    // Create audio context with proper sample rate
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                    const source = audioContext.createMediaStreamSource(mediaStream);
-                    
-                    // Modern browsers use AudioWorklet but fall back to ScriptProcessor
-                    let processor;
-                    try {
-                        await audioContext.audioWorklet.addModule('audio-processor.js');
-                        processor = new AudioWorkletNode(audioContext, 'audio-processor');
-                        console.log('Using AudioWorkletNode');
-                    } catch (e) {
-                        console.error('AudioWorklet not supported, falling back to ScriptProcessor', e);
-                        processor = audioContext.createScriptProcessor(4096, 1, 1);
-                    }
-                    
-                    source.connect(processor);
-                    processor.connect(audioContext.destination);
-                    
-                    // Direct connection with API key as a header (avoiding the token fetch)
-                    console.log('API key length:', apiKey ? apiKey.length : 0);
-                    websocket = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=${audioContext.sampleRate}`);
-                    
-                    // Set up event handlers before sending authentication
-                    websocket.onopen = () => {
-                        console.log('WebSocket connection established');
-                        
-                        // After connection is open, send authentication message
-                        try {
-                            websocket.send(JSON.stringify({ token: apiKey }));
-                            console.log('Authentication sent');
-                            
-                            // Set recording state
-                            isRecording = true;
-                            recordingIndicator.classList.add('active');
-                            showToast('Voice recording started', 'info');
-                        } catch (err) {
-                            console.error('Error sending authentication:', err);
-                            stopAssemblyAIRecording();
-                        }
-                    };
-                    
-                    websocket.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            console.log('AssemblyAI message:', data);
-                            
-                            if (data.message_type === 'FinalTranscript' || data.message_type === 'PartialTranscript') {
-                                if (data.text) {
-                                    // Get current selection
-                                    const selection = window.getSelection();
-                                    if (selection.rangeCount > 0) {
-                                        const range = selection.getRangeAt(0);
-                                        
-                                        // For final transcript, add space after
-                                        let text = data.text;
-                                        if (data.message_type === 'FinalTranscript') {
-                                            text += ' ';
-                                        }
-                                        
-                                        // Insert the transcript
-                                        // For partial, we'll replace the previous partial text
-                                        if (data.message_type === 'PartialTranscript' && window.lastPartialRange) {
-                                            try {
-                                                selection.removeAllRanges();
-                                                selection.addRange(window.lastPartialRange);
-                                                document.execCommand('insertText', false, text);
-                                            } catch (e) {
-                                                // If replacing fails, just insert at current position
-                                                document.execCommand('insertText', false, text);
-                                            }
-                                        } else {
-                                            document.execCommand('insertText', false, text);
-                                        }
-                                        
-                                        // Store range if partial for later replacement
-                                        if (data.message_type === 'PartialTranscript') {
-                                            window.lastPartialRange = selection.getRangeAt(0);
-                                            window.lastPartialRange.setStart(window.lastPartialRange.startContainer, window.lastPartialRange.startOffset - text.length);
-                                        } else {
-                                            window.lastPartialRange = null;
-                                        }
-                                        
-                                        // Auto-scroll to cursor
-                                        const cursorPos = range.getBoundingClientRect();
-                                        if (cursorPos.bottom > window.innerHeight) {
-                                            window.scrollTo(0, window.scrollY + cursorPos.bottom - window.innerHeight + 50);
-                                        }
-                                        
-                                        updateWordCharCount();
-                                        checkEditorHeight();
-                                    }
-                                }
-                            } else if (data.message_type === 'SessionBegins') {
-                                console.log('AssemblyAI session started', data);
-                            } else if (data.message_type === 'Error') {
-                                console.error('AssemblyAI error', data);
-                                showToast('AssemblyAI error: ' + (data.error || 'Unknown error'), 'error');
-                                
-                                // Special handling for auth errors
-                                if (data.error && data.error.includes("Not authorized")) {
-                                    console.error("Authentication failed. Check your API key.");
-                                }
-                                
-                                stopAssemblyAIRecording();
-                            }
-                        } catch (error) {
-                            console.error('Error processing WebSocket message:', error);
-                        }
-                    };
-                    
-                    websocket.onerror = (error) => {
-                        console.error('WebSocket error', error);
-                        showToast('WebSocket error - check console for details', 'error');
-                        stopAssemblyAIRecording();
-                    };
-                    
-                    websocket.onclose = (event) => {
-                        console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
-                        if (isRecording) {
-                            showToast(`Connection closed: ${event.reason || 'Unknown reason'}`, 'warning');
-                            stopAssemblyAIRecording();
-                        }
-                    };
-                    
-                    // Set up audio processing
-                    if (audioContext.audioWorklet && processor instanceof AudioWorkletNode) {
-                        processor.port.onmessage = (event) => {
-                            if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
-                            
-                            try {
-                                // Send buffer to AssemblyAI
-                                if (event.data && event.data.audio_data) {
-                                    websocket.send(event.data.audio_data);
-                                }
-                            } catch (err) {
-                                console.error('Error sending audio data:', err);
-                            }
-                        };
-                    } else {
-                        // For ScriptProcessor
-                        processor.onaudioprocess = (e) => {
-                            if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
-                            
-                            try {
-                                // Get audio data
-                                const inputData = e.inputBuffer.getChannelData(0);
-                                
-                                // Convert to 16-bit PCM
-                                const pcmData = convertToInt16(inputData);
-                                
-                                // Send to AssemblyAI
-                                websocket.send(pcmData);
-                            } catch (err) {
-                                console.error('Error processing audio:', err);
-                            }
-                        };
-                    }
-                    
-                    return true;
-                } catch (error) {
-                    console.error('Error starting AssemblyAI:', error);
-                    showToast('Error starting speech recording: ' + error.message, 'error');
+           async function startAssemblyAIRecording() {
+            try {
+                const apiKey = getAssemblyAIApiKey();
+                if (!apiKey) {
+                    showToast('Missing AssemblyAI API key', 'error');
                     return false;
                 }
-            }
-
-            // 2. Helper function to convert audio format
-            function convertToInt16(float32Array) {
-                // Create a new Int16Array with the correct length
-                const int16Array = new Int16Array(float32Array.length);
                 
-                // Convert to 16-bit PCM correctly
-                for (let i = 0; i < float32Array.length; i++) {
-                    // Clamp values between -1 and 1
-                    const s = Math.max(-1, Math.min(1, float32Array[i]));
-                    // Convert to 16-bit signed integer
-                    // Negative values use two's complement
-                    int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                // Request microphone access first
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                } catch (err) {
+                    console.error("Couldn't access microphone:", err);
+                    showToast("Microphone access denied", 'error');
+                    return false;
                 }
                 
-                return int16Array.buffer;
-            }
-
-            // 3. Stop recording function
-            function stopAssemblyAIRecording() {
-                isRecording = false;
-                recordingIndicator.classList.remove('active');
+                // Create audio context with proper sample rate
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                const source = audioContext.createMediaStreamSource(mediaStream);
                 
-                // Clean up WebSocket
-                if (websocket) {
+                // Modern browsers use AudioWorklet but fall back to ScriptProcessor
+                let processor;
+                try {
+                    await audioContext.audioWorklet.addModule('audio-processor.js');
+                    processor = new AudioWorkletNode(audioContext, 'audio-processor');
+                    console.log('Using AudioWorkletNode');
+                } catch (e) {
+                    console.error('AudioWorklet not supported, falling back to ScriptProcessor', e);
+                    processor = audioContext.createScriptProcessor(4096, 1, 1);
+                }
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                // Use the Authorization header directly in the WebSocket URL
+                console.log('API key length:', apiKey ? apiKey.length : 0);
+                
+                // This is the key change - include the API key directly in the URL as a query param
+                websocket = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=${audioContext.sampleRate}&authorization=${apiKey}`);
+                
+                websocket.onopen = () => {
+                    console.log('WebSocket connection established');
+                    isRecording = true;
+                    recordingIndicator.classList.add('active');
+                    showToast('Voice recording started', 'info');
+                };
+                
+                websocket.onmessage = (event) => {
                     try {
-                        if (websocket.readyState === WebSocket.OPEN) {
-                            // The correct way to terminate an AssemblyAI session
-                            websocket.send(JSON.stringify({ terminate_session: true }));
-                            console.log('Sent terminate_session message');
-                            
-                            // Give it a moment to process before closing
-                            setTimeout(() => {
-                                try {
-                                    websocket.close();
-                                    websocket = null;
-                                } catch (e) {
-                                    console.error('Error closing websocket:', e);
+                        const data = JSON.parse(event.data);
+                        console.log('AssemblyAI message:', data);
+                        
+                        if (data.message_type === 'FinalTranscript' || data.message_type === 'PartialTranscript') {
+                            if (data.text) {
+                                // Get current selection
+                                const selection = window.getSelection();
+                                if (selection.rangeCount > 0) {
+                                    const range = selection.getRangeAt(0);
+                                    
+                                    // For final transcript, add space after
+                                    let text = data.text;
+                                    if (data.message_type === 'FinalTranscript') {
+                                        text += ' ';
+                                    }
+                                    
+                                    // Insert the transcript
+                                    // For partial, we'll replace the previous partial text
+                                    if (data.message_type === 'PartialTranscript' && window.lastPartialRange) {
+                                        try {
+                                            selection.removeAllRanges();
+                                            selection.addRange(window.lastPartialRange);
+                                            document.execCommand('insertText', false, text);
+                                        } catch (e) {
+                                            // If replacing fails, just insert at current position
+                                            document.execCommand('insertText', false, text);
+                                        }
+                                    } else {
+                                        document.execCommand('insertText', false, text);
+                                    }
+                                    
+                                    // Store range if partial for later replacement
+                                    if (data.message_type === 'PartialTranscript') {
+                                        window.lastPartialRange = selection.getRangeAt(0);
+                                        window.lastPartialRange.setStart(window.lastPartialRange.startContainer, window.lastPartialRange.startOffset - text.length);
+                                    } else {
+                                        window.lastPartialRange = null;
+                                    }
+                                    
+                                    // Auto-scroll to cursor
+                                    const cursorPos = range.getBoundingClientRect();
+                                    if (cursorPos.bottom > window.innerHeight) {
+                                        window.scrollTo(0, window.scrollY + cursorPos.bottom - window.innerHeight + 50);
+                                    }
+                                    
+                                    updateWordCharCount();
+                                    checkEditorHeight();
                                 }
-                            }, 300);
-                        } else {
+                            }
+                        } else if (data.message_type === 'SessionBegins') {
+                            console.log('AssemblyAI session started', data);
+                        } else if (data.message_type === 'Error') {
+                            console.error('AssemblyAI error', data);
+                            showToast('AssemblyAI error: ' + (data.error || 'Unknown error'), 'error');
+                            
+                            // Special handling for auth errors
+                            if (data.error && data.error.includes("Not authorized")) {
+                                console.error("Authentication failed. Check your API key format.");
+                                showToast("API key format may be incorrect. It should start with your account ID.", 'error');
+                            }
+                            
+                            stopAssemblyAIRecording();
+                        }
+                    } catch (error) {
+                        console.error('Error processing WebSocket message:', error);
+                    }
+                };
+                
+                websocket.onerror = (error) => {
+                    console.error('WebSocket error', error);
+                    showToast('WebSocket error - check console for details', 'error');
+                    stopAssemblyAIRecording();
+                };
+                
+                websocket.onclose = (event) => {
+                    console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
+                    if (isRecording) {
+                        let message = 'Connection closed';
+                        if (event.code) {
+                            message += ` (code: ${event.code})`;
+                        }
+                        if (event.reason) {
+                            message += `: ${event.reason}`;
+                        }
+                        showToast(message, 'warning');
+                        stopAssemblyAIRecording();
+                    }
+                };
+                
+                // Set up audio processing
+                if (audioContext.audioWorklet && processor instanceof AudioWorkletNode) {
+                    processor.port.onmessage = (event) => {
+                        if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+                        
+                        try {
+                            // Send buffer to AssemblyAI
+                            if (event.data && event.data.audio_data) {
+                                websocket.send(event.data.audio_data);
+                            }
+                        } catch (err) {
+                            console.error('Error sending audio data:', err);
+                        }
+                    };
+                } else {
+                    // For ScriptProcessor
+                    processor.onaudioprocess = (e) => {
+                        if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+                        
+                        try {
+                            // Get audio data
+                            const inputData = e.inputBuffer.getChannelData(0);
+                            
+                            // Convert to 16-bit PCM
+                            const pcmData = convertToInt16(inputData);
+                            
+                            // Send to AssemblyAI
+                            websocket.send(pcmData);
+                        } catch (err) {
+                            console.error('Error processing audio:', err);
+                        }
+                    };
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Error starting AssemblyAI:', error);
+                showToast('Error starting speech recording: ' + error.message, 'error');
+                
+                // Fall back to browser built-in speech recognition
+                console.log('Falling back to browser speech recognition');
+                initBrowserSpeechRecognition();
+                return false;
+            }
+        }
+        
+        function convertToInt16(float32Array) {
+            // Create a new Int16Array with the correct length
+            const int16Array = new Int16Array(float32Array.length);
+            
+            // Convert to 16-bit PCM correctly
+            for (let i = 0; i < float32Array.length; i++) {
+                // Clamp values between -1 and 1
+                const s = Math.max(-1, Math.min(1, float32Array[i]));
+                // Convert to 16-bit signed integer
+                // Negative values use two's complement
+                int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            
+            return int16Array.buffer;
+        }
+        
+        function stopAssemblyAIRecording() {
+            isRecording = false;
+            recordingIndicator.classList.remove('active');
+            
+            // Clean up WebSocket
+            if (websocket) {
+                try {
+                    if (websocket.readyState === WebSocket.OPEN) {
+                        // The correct way to terminate an AssemblyAI session
+                        websocket.send(JSON.stringify({ terminate_session: true }));
+                        console.log('Sent terminate_session message');
+                        
+                        // Give it a moment to process before closing
+                        setTimeout(() => {
                             try {
                                 websocket.close();
+                                websocket = null;
                             } catch (e) {
-                                console.error('Error closing already closed websocket:', e);
+                                console.error('Error closing websocket:', e);
                             }
-                            websocket = null;
+                        }, 300);
+                    } else {
+                        try {
+                            websocket.close();
+                        } catch (e) {
+                            console.error('Error closing already closed websocket:', e);
                         }
-                    } catch (e) {
-                        console.error('Error during websocket termination:', e);
                         websocket = null;
                     }
+                } catch (e) {
+                    console.error('Error during websocket termination:', e);
+                    websocket = null;
                 }
-                
-                // Clean up audio context
-                if (audioContext && audioContext.state !== 'closed') {
-                    try {
-                        audioContext.close().catch(e => console.error('Error closing audio context:', e));
-                    } catch (e) {
-                        console.error('Error during audioContext.close():', e);
-                    }
-                    audioContext = null;
-                }
-                
-                // Stop microphone
-                if (mediaStream) {
-                    try {
-                        mediaStream.getTracks().forEach(track => {
-                            track.stop();
-                            console.log('Microphone track stopped');
-                        });
-                    } catch (e) {
-                        console.error('Error stopping media tracks:', e);
-                    }
-                    mediaStream = null;
-                }
-                
-                window.lastPartialRange = null;
-                showToast('Voice recording stopped', 'success');
             }
+            
+            // Clean up audio context
+            if (audioContext && audioContext.state !== 'closed') {
+                try {
+                    audioContext.close().catch(e => console.error('Error closing audio context:', e));
+                } catch (e) {
+                    console.error('Error during audioContext.close():', e);
+                }
+                audioContext = null;
+            }
+            
+            // Stop microphone
+            if (mediaStream) {
+                try {
+                    mediaStream.getTracks().forEach(track => {
+                        track.stop();
+                        console.log('Microphone track stopped');
+                    });
+                } catch (e) {
+                    console.error('Error stopping media tracks:', e);
+                }
+                mediaStream = null;
+            }
+            
+            window.lastPartialRange = null;
+            showToast('Voice recording stopped', 'success');
+        }
             
             // Speech button click handler
             speakBtn.addEventListener('click', async function() {
