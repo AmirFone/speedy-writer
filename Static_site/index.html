@@ -1317,182 +1317,206 @@
                         return false;
                     }
                     
-                    // Request microphone access
-                    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    // Step 1: Get a temporary token from AssemblyAI
+                    console.log('Getting temporary token from AssemblyAI...');
                     
-                    // Create audio context with proper sample rate
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-                    const source = audioContext.createMediaStreamSource(mediaStream);
-                    
-                    // Modern browsers use AudioWorklet but fall back to ScriptProcessor
-                    let processor;
-                    if (audioContext.audioWorklet) {
+                    try {
+                        // Make an API request to get a temporary token
+                        const response = await fetch('https://api.assemblyai.com/v2/realtime/token', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': apiKey,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                expires_in: 3600 // Token valid for 1 hour
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('Failed to get token:', response.status, errorText);
+                            showToast(`Authentication failed: ${response.status}`, 'error');
+                            return false;
+                        }
+                        
+                        const tokenData = await response.json();
+                        const tempToken = tokenData.token;
+                        console.log('Got temporary token:', tempToken?.substring(0, 10) + '...');
+                        
+                        // Request microphone access
+                        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        
+                        // Create audio context with proper sample rate
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                        const source = audioContext.createMediaStreamSource(mediaStream);
+                        
+                        // Modern browsers use AudioWorklet but fall back to ScriptProcessor
+                        let processor;
                         try {
                             await audioContext.audioWorklet.addModule('audio-processor.js');
                             processor = new AudioWorkletNode(audioContext, 'audio-processor');
+                            console.log('Using AudioWorkletNode');
                         } catch (e) {
                             console.error('AudioWorklet not supported, falling back to ScriptProcessor', e);
                             processor = audioContext.createScriptProcessor(4096, 1, 1);
                         }
-                    } else {
-                        processor = audioContext.createScriptProcessor(4096, 1, 1);
-                    }
-                    
-                    source.connect(processor);
-                    processor.connect(audioContext.destination);
-                    
-                    // First, verify that we have a valid API key
-                    if (!apiKey || apiKey.trim().length < 10) {
-                        showToast('Invalid AssemblyAI API key. Please check and try again.', 'error');
-                        return false;
-                    }
-
-                    // Log the key length (not the actual key) for debugging
-                    console.log('API key length:', apiKey.length);
-
-                    // Create WebSocket connection with proper parameters and the token in the URL
-                    websocket = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=${audioContext.sampleRate}&token=${apiKey}`);
-
-                    websocket.onopen = () => {
-                        console.log('WebSocket connection established');
                         
-                        // Set recording state
-                        isRecording = true;
-                        recordingIndicator.classList.add('active');
-                        showToast('Voice recording started', 'info');
-                    };
-            
-                    
-                    websocket.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            console.log('AssemblyAI message:', data);
-                            
-                            if (data.message_type === 'FinalTranscript' || data.message_type === 'PartialTranscript') {
-                                if (data.text) {
-                                    // Get current selection
-                                    const selection = window.getSelection();
-                                    if (selection.rangeCount > 0) {
-                                        const range = selection.getRangeAt(0);
-                                        
-                                        // For final transcript, add space after
-                                        let text = data.text;
-                                        if (data.message_type === 'FinalTranscript') {
-                                            text += ' ';
-                                        }
-                                        
-                                        // Insert the transcript
-                                        // For partial, we'll replace the previous partial text
-                                        if (data.message_type === 'PartialTranscript' && window.lastPartialRange) {
-                                            try {
-                                                selection.removeAllRanges();
-                                                selection.addRange(window.lastPartialRange);
-                                                document.execCommand('insertText', false, text);
-                                            } catch (e) {
-                                                // If replacing fails, just insert at current position
+                        source.connect(processor);
+                        processor.connect(audioContext.destination);
+                        
+                        // Create WebSocket connection with the temporary token
+                        websocket = new WebSocket(`wss://api.assemblyai.com/v2/realtime/ws?sample_rate=${audioContext.sampleRate}&token=${tempToken}`);
+                        
+                        websocket.onopen = () => {
+                            console.log('WebSocket connection established');
+                            isRecording = true;
+                            recordingIndicator.classList.add('active');
+                            showToast('Voice recording started', 'info');
+                        };
+                        
+                        websocket.onmessage = (event) => {
+                            try {
+                                const data = JSON.parse(event.data);
+                                console.log('AssemblyAI message:', data);
+                                
+                                if (data.message_type === 'FinalTranscript' || data.message_type === 'PartialTranscript') {
+                                    if (data.text) {
+                                        // Get current selection
+                                        const selection = window.getSelection();
+                                        if (selection.rangeCount > 0) {
+                                            const range = selection.getRangeAt(0);
+                                            
+                                            // For final transcript, add space after
+                                            let text = data.text;
+                                            if (data.message_type === 'FinalTranscript') {
+                                                text += ' ';
+                                            }
+                                            
+                                            // Insert the transcript
+                                            // For partial, we'll replace the previous partial text
+                                            if (data.message_type === 'PartialTranscript' && window.lastPartialRange) {
+                                                try {
+                                                    selection.removeAllRanges();
+                                                    selection.addRange(window.lastPartialRange);
+                                                    document.execCommand('insertText', false, text);
+                                                } catch (e) {
+                                                    // If replacing fails, just insert at current position
+                                                    document.execCommand('insertText', false, text);
+                                                }
+                                            } else {
                                                 document.execCommand('insertText', false, text);
                                             }
-                                        } else {
-                                            document.execCommand('insertText', false, text);
+                                            
+                                            // Store range if partial for later replacement
+                                            if (data.message_type === 'PartialTranscript') {
+                                                window.lastPartialRange = selection.getRangeAt(0);
+                                                window.lastPartialRange.setStart(window.lastPartialRange.startContainer, window.lastPartialRange.startOffset - text.length);
+                                            } else {
+                                                window.lastPartialRange = null;
+                                            }
+                                            
+                                            // Auto-scroll to cursor
+                                            const cursorPos = range.getBoundingClientRect();
+                                            if (cursorPos.bottom > window.innerHeight) {
+                                                window.scrollTo(0, window.scrollY + cursorPos.bottom - window.innerHeight + 50);
+                                            }
+                                            
+                                            updateWordCharCount();
+                                            checkEditorHeight();
                                         }
-                                        
-                                        // Store range if partial for later replacement
-                                        if (data.message_type === 'PartialTranscript') {
-                                            window.lastPartialRange = selection.getRangeAt(0);
-                                            window.lastPartialRange.setStart(window.lastPartialRange.startContainer, window.lastPartialRange.startOffset - text.length);
-                                        } else {
-                                            window.lastPartialRange = null;
-                                        }
-                                        
-                                        // Auto-scroll to cursor
-                                        const cursorPos = range.getBoundingClientRect();
-                                        if (cursorPos.bottom > window.innerHeight) {
-                                            window.scrollTo(0, window.scrollY + cursorPos.bottom - window.innerHeight + 50);
-                                        }
-                                        
-                                        updateWordCharCount();
-                                        checkEditorHeight();
                                     }
+                                } else if (data.message_type === 'SessionBegins') {
+                                    console.log('AssemblyAI session started', data);
+                                } else if (data.message_type === 'Error') {
+                                    console.error('AssemblyAI error', data);
+                                    showToast('AssemblyAI error: ' + (data.error || 'Unknown error'), 'error');
+                                    stopAssemblyAIRecording();
                                 }
-                            } else if (data.message_type === 'SessionBegins') {
-                                console.log('AssemblyAI session started', data);
-                            } else if (data.message_type === 'Error') {
-                                console.error('AssemblyAI error', data);
-                                showToast('AssemblyAI error: ' + (data.error || 'Unknown error'), 'error');
+                            } catch (error) {
+                                console.error('Error processing WebSocket message:', error);
+                            }
+                        };
+                        
+                        websocket.onerror = (error) => {
+                            console.error('WebSocket error', error);
+                            showToast('WebSocket error - check console for details', 'error');
+                            stopAssemblyAIRecording();
+                        };
+                        
+                        websocket.onclose = (event) => {
+                            console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
+                            if (isRecording) {
+                                showToast(`Connection closed: ${event.reason || 'Unknown reason'}`, 'warning');
                                 stopAssemblyAIRecording();
                             }
-                        } catch (error) {
-                            console.error('Error processing WebSocket message:', error);
-                        }
-                    };
-                    
-                    websocket.onerror = (error) => {
-                        console.error('WebSocket error', error);
-                        showToast('WebSocket error - check console for details', 'error');
-                        stopAssemblyAIRecording();
-                    };
-                    
-                    websocket.onclose = (event) => {
-                        console.log('WebSocket closed with code:', event.code, 'reason:', event.reason);
-                        if (isRecording) {
-                            showToast(`Connection closed: ${event.reason || 'Unknown reason'}`, 'warning');
-                            stopAssemblyAIRecording();
-                        }
-                    };
-                    
-                    websocket.onerror = (error) => {
-                        console.error('WebSocket error', error);
-                        showToast('WebSocket error: ' + error.message || 'Unknown error', 'error');
-                        stopAssemblyAIRecording();
-                    };
-                    
-                    websocket.onclose = () => {
-                        stopAssemblyAIRecording();
-                    };
-                    
-                    // Send audio data when processor generates output
-                    // For AudioWorklet
-                    // Set up ScriptProcessor audio processing
-                    processor.onaudioprocess = (e) => {
-                        if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+                        };
                         
-                        try {
-                            // Get audio data from the first channel
-                            const inputData = e.inputBuffer.getChannelData(0);
-                            
-                            // Convert to 16-bit PCM
-                            const pcmData = convertToInt16(inputData);
-                            
-                            // Log audio data size
-                            if (isRecording && websocket.readyState === WebSocket.OPEN) {
-                                console.log('Sending audio chunk, size:', pcmData.byteLength);
-                                websocket.send(pcmData);
-                            }
-                        } catch (err) {
-                            console.error('Error processing audio:', err);
+                        // Set up audio processing
+                        if (audioContext.audioWorklet && processor instanceof AudioWorkletNode) {
+                            processor.port.onmessage = (event) => {
+                                if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+                                
+                                try {
+                                    // Send buffer to AssemblyAI
+                                    if (event.data && event.data.audio_data) {
+                                        websocket.send(event.data.audio_data);
+                                    }
+                                } catch (err) {
+                                    console.error('Error sending audio data:', err);
+                                }
+                            };
+                        } else {
+                            // For ScriptProcessor
+                            processor.onaudioprocess = (e) => {
+                                if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
+                                
+                                try {
+                                    // Get audio data
+                                    const inputData = e.inputBuffer.getChannelData(0);
+                                    
+                                    // Convert to 16-bit PCM
+                                    const pcmData = convertToInt16(inputData);
+                                    
+                                    // Send to AssemblyAI
+                                    websocket.send(pcmData);
+                                } catch (err) {
+                                    console.error('Error processing audio:', err);
+                                }
+                            };
                         }
-                    };
-                    
-                    return true;
+                        
+                        return true;
+                    } catch (error) {
+                        console.error('Error getting temporary token:', error);
+                        showToast('Failed to authenticate with AssemblyAI', 'error');
+                        return false;
+                    }
                 } catch (error) {
-                    console.error('Error starting AssemblyAI', error);
+                    console.error('Error starting AssemblyAI:', error);
                     showToast('Error starting speech recording: ' + error.message, 'error');
                     return false;
                 }
             }
             
-            // Helper to convert Float32Array to Int16Array for AssemblyAI
+            // Updated convertToInt16 function
             function convertToInt16(float32Array) {
+                // Ensure we're creating a new Int16Array with the correct length
                 const int16Array = new Int16Array(float32Array.length);
+                
+                // Convert to 16-bit PCM correctly
                 for (let i = 0; i < float32Array.length; i++) {
-                    // Convert -1.0 - 1.0 to -32768 - 32767
+                    // Clamp values between -1 and 1
                     const s = Math.max(-1, Math.min(1, float32Array[i]));
+                    // Convert to 16-bit signed integer
+                    // Negative values use two's complement
                     int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                 }
+                
                 return int16Array.buffer;
             }
             
-            // Stop AssemblyAI recording
+            // Updated stopAssemblyAIRecording function
             function stopAssemblyAIRecording() {
                 isRecording = false;
                 recordingIndicator.classList.remove('active');
@@ -1501,20 +1525,27 @@
                 if (websocket) {
                     try {
                         if (websocket.readyState === WebSocket.OPEN) {
+                            // The correct way to terminate an AssemblyAI session
                             websocket.send(JSON.stringify({ terminate_session: true }));
                             console.log('Sent terminate_session message');
+                            
+                            // Give it a moment to process before closing
+                            setTimeout(() => {
+                                try {
+                                    websocket.close();
+                                    websocket = null;
+                                } catch (e) {
+                                    console.error('Error closing websocket:', e);
+                                }
+                            }, 300);
+                        } else {
+                            websocket.close();
+                            websocket = null;
                         }
                     } catch (e) {
                         console.error('Error during websocket termination:', e);
+                        websocket = null;
                     }
-                    
-                    try {
-                        websocket.close();
-                    } catch (e) {
-                        console.error('Error closing websocket:', e);
-                    }
-                    
-                    websocket = null;
                 }
                 
                 // Clean up audio context
