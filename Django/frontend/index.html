@@ -1369,16 +1369,6 @@
 			audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
 			const source = audioContext.createMediaStreamSource(mediaStream);
 			
-			// Modern browsers use AudioWorklet but fall back to ScriptProcessor
-			let processor;
-			try {
-			    await audioContext.audioWorklet.addModule('audio-processor.js');
-			    processor = new AudioWorkletNode(audioContext, 'audio-processor');
-			    console.log('Using AudioWorkletNode');
-			} catch (e) {
-			    console.error('AudioWorklet not supported, falling back to ScriptProcessor', e);
-			    processor = audioContext.createScriptProcessor(4096, 1, 1);
-			}
 			
 			source.connect(processor);
 			processor.connect(audioContext.destination);
@@ -1492,21 +1482,6 @@
 			};
 			
 			// Set up audio processing
-			if (audioContext.audioWorklet && processor instanceof AudioWorkletNode) {
-			    processor.port.onmessage = (event) => {
-				if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
-				
-				try {
-				    // Send buffer to AssemblyAI
-				    if (event.data && event.data.audio_data) {
-					websocket.send(event.data.audio_data);
-				    }
-				} catch (err) {
-				    console.error('Error sending audio data:', err);
-				}
-			    };
-			} else {
-			    // For ScriptProcessor
 			    processor.onaudioprocess = (e) => {
 				if (!isRecording || !websocket || websocket.readyState !== WebSocket.OPEN) return;
 				
@@ -1523,7 +1498,6 @@
 				    console.error('Error processing audio:', err);
 				}
 			    };
-			}
 			
 			return true;
 		    } catch (error) {
@@ -1787,7 +1761,6 @@
                 aiRewriteModal.classList.remove('active');
             });
             
-            // AI Rewrite Submit
             submitAiRewrite.addEventListener('click', function() {
                 const originalText = selectedTextElement.textContent;
                 const prompt = aiPrompt.value.trim() || 'Improve this text';
@@ -1797,7 +1770,7 @@
                 submitAiRewrite.innerHTML = '<span class="spinner"></span> Processing...';
                 submitAiRewrite.disabled = true;
                 
-                // Call the AI rewrite function with streaming updates
+                // Call the AI rewrite function
                 anthropicRewrite(originalText, prompt)
                     .then(suggestedText => {
                         // Display difference
@@ -1815,7 +1788,20 @@
                         submitAiRewrite.disabled = false;
                     })
                     .catch(error => {
-                        showToast('Error generating AI suggestion: ' + error.message, 'error');
+                        console.error("AI rewrite error:", error);
+                        let errorMessage = error.message || "Unknown error";
+                        
+                        // Clean up error messages that might be JSON objects
+                        if (errorMessage.includes("{") && errorMessage.includes("}")) {
+                            try {
+                                const errorObj = JSON.parse(errorMessage);
+                                errorMessage = errorObj.error || errorObj.message || "API error";
+                            } catch (e) {
+                                // If we can't parse it, just use the original message
+                            }
+                        }
+                        
+                        showToast('Error generating AI suggestion: ' + errorMessage, 'error');
                         submitAiRewrite.innerHTML = originalBtnText;
                         submitAiRewrite.disabled = false;
                     });
@@ -1850,6 +1836,7 @@
             });
             
             // Regenerate AI suggestion
+               // Regenerate AI suggestion
             regenerateAiSuggestion.addEventListener('click', function() {
                 const originalText = selectedTextElement.textContent;
                 const prompt = aiPrompt.value.trim() || 'Improve this text';
@@ -1860,7 +1847,7 @@
                 regenerateAiSuggestion.disabled = true;
                 applyAiSuggestion.disabled = true;
                 
-                // Call the AI rewrite function with streaming updates
+                // Call the AI rewrite function
                 anthropicRewrite(originalText, prompt)
                     .then(suggestedText => {
                         // Update the suggested text
@@ -1879,115 +1866,49 @@
                     });
             });
             
-            // Anthropic API call for rewriting
+            // Anthropic API call for rewriting (updated to use backend proxy)
             async function anthropicRewrite(text, prompt) {
                 const apiKey = getAnthropicApiKey();
                 if (!apiKey) {
                     throw new Error('Missing Anthropic API key');
                 }
                 
-                return new Promise((resolve, reject) => {
-                    // In a real implementation, use the Anthropic API with streaming
-                    try {
-                        let processedText = '';
+                try {
+                    console.log(`Sending rewrite request for text: ${text.substring(0, 30)}...`);
+                    
+                    const response = await fetch('/api/anthropic/rewrite/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            api_key: apiKey,
+                            text: text,
+                            prompt: prompt
+                        })
+                    });
+                    
+                    const responseData = await response.json();
+                    console.log('Response status:', response.status);
+                    
+                    if (!response.ok) {
+                        // Format the error message properly
+                        let errorMessage = 'Failed to get response from Anthropic API';
                         
-                        // Simulate API call (would be a fetch to Anthropic API in production)
-                        // Basic simulation logic based on the prompt
-                        if (prompt.toLowerCase().includes('formal')) {
-                            processedText = text.replace(/don't/g, 'do not')
-                                .replace(/won't/g, 'will not')
-                                .replace(/can't/g, 'cannot')
-                                .replace(/I'm/g, 'I am')
-                                .replace(/you're/g, 'you are')
-                                .replace(/we're/g, 'we are')
-                                .replace(/they're/g, 'they are')
-                                .replace(/let's/g, 'let us')
-                                .replace(/it's/g, 'it is');
-                        } else if (prompt.toLowerCase().includes('simple') || prompt.toLowerCase().includes('simplify')) {
-                            processedText = text.replace(/utilize/g, 'use')
-                                .replace(/implement/g, 'use')
-                                .replace(/furthermore/g, 'also')
-                                .replace(/subsequently/g, 'then')
-                                .replace(/nevertheless/g, 'however')
-                                .replace(/commenced/g, 'started')
-                                .replace(/regarding/g, 'about')
-                                .replace(/sufficient/g, 'enough');
-                        } else if (prompt.toLowerCase().includes('persuasive')) {
-                            processedText = text.replace(/I think/g, 'I strongly believe')
-                                .replace(/good/g, 'excellent')
-                                .replace(/bad/g, 'problematic')
-                                .replace(/important/g, 'crucial')
-                                .replace(/problem/g, 'challenge')
-                                .replace(/difficult/g, 'demanding')
-                                .replace(/big/g, 'significant');
-                        } else {
-                            // Generic improvements
-                            processedText = text.replace(/very /gi, '')
-                                .replace(/really /gi, '')
-                                .replace(/just /gi, '')
-                                .replace(/that /gi, '')
-                                .replace(/ that/gi, '')
-                                .replace(/basically/gi, '')
-                                .replace(/actually/gi, '')
-                                .replace(/definitely/gi, '')
-                                .replace(/totally/gi, '')
-                                .replace(/literally/gi, '');
+                        if (responseData && responseData.error) {
+                            errorMessage = typeof responseData.error === 'string' 
+                                ? responseData.error 
+                                : JSON.stringify(responseData.error);
                         }
                         
-                        // Additional refinements to make the result look different but good
-                        processedText = processedText.split('. ').map(sentence => 
-                            sentence.charAt(0).toUpperCase() + sentence.slice(1)
-                        ).join('. ');
-                        
-                        // Add some variance to sentence structure
-                        processedText = processedText.replace(/\. /g, '.\n\n');
-                        processedText = processedText.split('\n\n').slice(0, -1).join('\n\n');
-                        
-                        // Add filler words to simulate more substantive changes
-                        let sentences = processedText.split('.');
-                        if (sentences.length > 1) {
-                            // Add a connector word to one of the sentence boundaries
-                            const connectors = ['Furthermore', 'Moreover', 'Additionally', 'In fact', 'Consequently'];
-                            const randomIndex = Math.floor(Math.random() * (sentences.length - 1));
-                            const connector = connectors[Math.floor(Math.random() * connectors.length)];
-                            sentences[randomIndex + 1] = ` ${connector}, ${sentences[randomIndex + 1].trim()}`;
-                        }
-                        processedText = sentences.join('.');
-                        
-                        // Final clean-up
-                        processedText = processedText.trim();
-                        
-                        // Create words array for streaming simulation
-                        const words = processedText.split(' ');
-                        
-                        // Stream words with realistic timing
-                        let currentText = '';
-                        let wordIndex = 0;
-                        
-                        function streamNextWord() {
-                            if (wordIndex < words.length) {
-                                currentText += (wordIndex > 0 ? ' ' : '') + words[wordIndex];
-                                diffSuggestedText.textContent = currentText;
-                                wordIndex++;
-                                
-                                // Randomize timing slightly to simulate realistic typing
-                                const delay = 50 + Math.random() * 50;
-                                setTimeout(streamNextWord, delay);
-                            } else {
-                                // All words streamed, resolve with final text
-                                resolve(currentText);
-                            }
-                        }
-                        
-                        // Start streaming simulation
-                        diffContainer.style.display = 'block';
-                        diffOriginalText.textContent = text;
-                        diffSuggestedText.textContent = '';
-                        streamNextWord();
-                    } catch (error) {
-                        reject(error);
+                        throw new Error(errorMessage);
                     }
-                });
+                    
+                    return responseData.text;
+                } catch (error) {
+                    console.error('Error in anthropicRewrite:', error);
+                    throw error;
+                }
             }
             
             // Inline Comments System
