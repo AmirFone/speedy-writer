@@ -205,6 +205,8 @@ document.addEventListener('DOMContentLoaded', function() {
 	    
 	    // Theme Toggle functionality
 	    themeToggle.addEventListener('click', toggleTheme);
+	    // Add to the init function or directly to the script
+	    document.addEventListener('keydown', handleKeyboardShortcuts);
 	}
 	
 	// Initialize Transcript Step
@@ -1266,122 +1268,187 @@ document.addEventListener('DOMContentLoaded', function() {
 	    // Update word count
 	    updateWordCharCount();
 	}
-	
+	// Handle keyboard shortcuts
+	function handleKeyboardShortcuts(e) {
+		// Check if we're in the editor
+		const isEditing = editor.contains(document.activeElement) || 
+				editor === document.activeElement;
+		
+		// Ctrl+G for AI Rewrite (changed from Ctrl+R)
+		if (e.ctrlKey && (e.key === 'g' || e.key === 'G')) {
+		e.preventDefault(); // Prevent browser defaults
+		e.stopPropagation();
+		if (isEditing) {
+			showAiRewriteModal();
+		}
+		return false;
+		}
+		
+		// Ctrl+D for Speech to Text
+		if (e.ctrlKey && (e.key === 'd' || e.key === 'D') && isEditing) {
+		e.preventDefault();
+		toggleSpeechRecognition();
+		return false;
+		}
+		
+		// Ctrl+/ for Comments
+		if (e.ctrlKey && e.key === '/' && isEditing) {
+		e.preventDefault();
+		addComment();
+		return false;
+		}
+	}
 	// Show AI Rewrite modal
 	function showAiRewriteModal() {
-	    // If toolbar is collapsed, expand it
-	    if (isToolbarCollapsed) {
+		// If toolbar is collapsed, expand it
+		if (isToolbarCollapsed) {
 		toggleFloatingToolbar();
-	    }
-	    
-	    // Check if API key exists
-	    if (!getAnthropicApiKey()) {
+		}
+		
+		// Check if API key exists
+		if (!getAnthropicApiKey()) {
 		anthropicKeyModal.classList.add('active');
 		return;
-	    }
-	    
-	    // Get selection
-	    const selection = window.getSelection();
-	    
-	    // Store selection range
-	    if (selection.rangeCount > 0) {
-		selectedRange = selection.getRangeAt(0).cloneRange();
-		
-		// Check if selection is not empty
-		if (!selectedRange.collapsed) {
-		    const selectedText = selectedRange.toString();
-		    
-		    if (selectedText.trim() === '') {
-			showToast('Please select text to rewrite', 'warning');
-			return;
-		    }
-		    
-		    // Reset the modal state
-		    selectedTextElement.textContent = selectedText;
-		    aiPrompt.value = '';
-		    diffContainer.style.display = 'none';
-		    submitAiRewrite.style.display = 'block';
-		    applyAiSuggestion.style.display = 'none';
-		    regenerateAiSuggestion.style.display = 'none';
-		    
-		    // Show modal
-		    aiRewriteModal.classList.add('active');
-		    
-		    // Focus on prompt input
-		    setTimeout(() => {
-			aiPrompt.focus();
-		    }, 300);
-		} else {
-		    showToast('Please select text to rewrite', 'warning');
 		}
-	    } else {
+		
+		// First focus the editor to ensure we're getting the right selection
+		editor.focus();
+		
+		// Get the current selection
+		const selection = window.getSelection();
+		
+		// Make sure we have a selection and it's not empty
+		if (!selection || selection.rangeCount === 0) {
 		showToast('Please select text to rewrite', 'warning');
-	    }
+		return;
+		}
+		
+		const range = selection.getRangeAt(0);
+		const selectedText = range.toString().trim();
+		
+		// Check if the selection is within our editor
+		let isInEditor = false;
+		let node = range.startContainer;
+		while (node && !isInEditor) {
+		if (node === editor) {
+			isInEditor = true;
+		}
+		node = node.parentNode;
+		}
+		
+		if (!isInEditor) {
+		showToast('Please select text within the editor', 'warning');
+		return;
+		}
+		
+		// Check if we have text
+		if (!selectedText) {
+		showToast('Please select text to rewrite', 'warning');
+		return;
+		}
+		
+		// Store the range for later use (make a clone to be safe)
+		window.selectedRange = range.cloneRange();
+		
+		// Reset the modal state
+		selectedTextElement.textContent = selectedText;
+		aiPrompt.value = '';
+		diffContainer.style.display = 'none';
+		submitAiRewrite.style.display = 'block';
+		applyAiSuggestion.style.display = 'none';
+		regenerateAiSuggestion.style.display = 'none';
+		
+		// Show modal
+		aiRewriteModal.classList.add('active');
+		
+		// Focus on prompt input
+		setTimeout(() => {
+		aiPrompt.focus();
+		}, 300);
 	}
 	
 	// Process AI rewrite request
 	function processAiRewrite() {
-	    const originalText = selectedTextElement.textContent;
-	    const prompt = aiPrompt.value.trim() || 'Improve this text';
-	    
-	    // Show loading state
-	    const originalBtnText = submitAiRewrite.innerHTML;
-	    submitAiRewrite.innerHTML = '<span class="spinner"></span> Processing...';
-	    submitAiRewrite.disabled = true;
-	    
-	    // Call the API
-	    anthropicRewrite(originalText, prompt)
+		// Get text from the modal, not from selection again
+		const originalText = selectedTextElement.textContent;
+		const prompt = aiPrompt.value.trim() || 'Improve this text';
+		
+		// Validate we have text
+		if (!originalText) {
+		showToast('No text to rewrite', 'error');
+		return;
+		}
+		
+		// Show loading state
+		const originalBtnText = submitAiRewrite.innerHTML;
+		submitAiRewrite.innerHTML = '<span class="spinner"></span> Processing...';
+		submitAiRewrite.disabled = true;
+		
+		// Call the API
+		anthropicRewrite(originalText, prompt)
 		.then(suggestedText => {
-		    // Display difference
-		    diffOriginalText.textContent = originalText;
-		    diffSuggestedText.textContent = suggestedText;
-		    diffContainer.style.display = 'block';
-		    
-		    // Show apply/regenerate buttons
-		    submitAiRewrite.style.display = 'none';
-		    applyAiSuggestion.style.display = 'inline-flex';
-		    regenerateAiSuggestion.style.display = 'inline-flex';
-		    
-		    // Reset button
-		    submitAiRewrite.innerHTML = originalBtnText;
-		    submitAiRewrite.disabled = false;
+			// Display difference
+			diffOriginalText.textContent = originalText;
+			diffSuggestedText.textContent = suggestedText;
+			diffContainer.style.display = 'block';
+			
+			// Show apply/regenerate buttons
+			submitAiRewrite.style.display = 'none';
+			applyAiSuggestion.style.display = 'inline-flex';
+			regenerateAiSuggestion.style.display = 'inline-flex';
+			
+			// Reset button
+			submitAiRewrite.innerHTML = originalBtnText;
+			submitAiRewrite.disabled = false;
 		})
 		.catch(error => {
-		    console.error("AI rewrite error:", error);
-		    showToast('Error generating AI suggestion: ' + error.message, 'error');
-		    
-		    // Reset button
-		    submitAiRewrite.innerHTML = originalBtnText;
-		    submitAiRewrite.disabled = false;
+			console.error("AI rewrite error:", error);
+			showToast('Error generating AI suggestion: ' + error.message, 'error');
+			
+			// Reset button
+			submitAiRewrite.innerHTML = originalBtnText;
+			submitAiRewrite.disabled = false;
 		});
 	}
 	
 	// Apply rewrite suggestion
-	function applyRewriteSuggestion() {
-	    const suggestedText = diffSuggestedText.textContent;
-	    
-	    // Replace selected text with suggested text
-	    if (selectedRange) {
+	// Apply rewrite suggestion
+function applyRewriteSuggestion() {
+	const suggestedText = diffSuggestedText.textContent;
+	
+	// Check if we have the stored range
+	if (window.selectedRange) {
+	    try {
+		// Restore the selection
 		const selection = window.getSelection();
 		selection.removeAllRanges();
-		selection.addRange(selectedRange);
+		selection.addRange(window.selectedRange);
 		
 		// Delete the selected content
 		document.execCommand('delete');
 		
 		// Insert the new content
 		document.execCommand('insertText', false, suggestedText);
+		
+		// Update word count
+		updateWordCharCount();
+		
+		// Save changes
+		saveToLocalStorage();
+		
+		// Show success message
+		showToast('Text successfully updated', 'success');
+	    } catch (error) {
+		console.error('Error applying text replacement:', error);
+		showToast('Error applying change. Please try again.', 'error');
 	    }
-	    
-	    // Close modal
-	    aiRewriteModal.classList.remove('active');
-	    
-	    // Show success message
-	    showToast('Text successfully updated', 'success');
-	    
-	    // Update word count
-	    updateWordCharCount();
+	} else {
+	    showToast('Could not determine where to insert text. Please try again.', 'warning');
 	}
+	
+	// Close modal
+	aiRewriteModal.classList.remove('active');
+    }
 	
 	// Regenerate rewrite suggestion
 	function regenerateRewriteSuggestion() {
